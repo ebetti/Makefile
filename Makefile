@@ -6,7 +6,7 @@
 # The code was partially inspired by:
 # http://www.makelinux.net/make3/make3-CHP-2-SECT-7
 #
-# Version 0.9.1 (September 26th, 2014)
+# Version 0.9.2 (October 2th, 2014)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -67,13 +67,13 @@ CC=$(CROSS_COMPILE)gcc
 CXX=$(CROSS_COMPILE)g++
 AR=$(CROSS_COMPILE)ar
 
+INCFLAGS=-I$(ROOTFS)/$(INSTALL_PREFIX)/include -I$(ROOTFS)/usr/include
+
 # CXXFLAGS will be the same
 CFLAGS=-Wall -O2 $(INCFLAGS) -fPIC
 
 LDFLAGS+=-L$(ROOTFS)/$(INSTALL_PREFIX)/lib -L$(ROOTFS)/usr/lib
 #LDFLAGS+=-L$(ROOTFS)/$(INSTALL_PREFIX)/lib64 -L$(ROOTFS)/usr/lib64
-
-INCFLAGS=-I$(ROOTFS)/$(INSTALL_PREFIX)/include -I$(ROOTFS)/usr/include
 
 # Build also sources from the following directories:
 EXTRA_DIRS=
