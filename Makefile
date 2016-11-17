@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.9.6 (November 4th, 2014)
+# Version 0.9.7-rc2 (December 2nd, 2014)
 #
 # "One to build them all!"
 #
@@ -44,7 +44,7 @@
 # Note that when building libraries the final library name will be:
 # - lib$(TARGETNAME).so for shared libraries
 # - lib$(TARGETNAME).a for static libraries
-TARGETNAME=a.out
+TARGETNAME?=a.out
 
 # Target type can be:
 # - 'exec' (or blank - it's the default) for dynamic executable
@@ -52,23 +52,40 @@ TARGETNAME=a.out
 # - 'lib' to build as library (both shared and static)
 # - 'sharedlib' for shared library
 # - 'staticlib' for static library
-TARGETTYPE=exec
+TARGETTYPE?=exec
 
 # Set to 'y' to enable DEBUG
 DEBUG?=n
 
 # 'n' -> if your source code is C
 # 'y' -> if your source code is C++
-CPLUSPLUS=n
+CPLUSPLUS?=n
 
 # 'y' -> if you want this Makefile to use 'sudo' when installing the target or
 # 	 creating a package
 # 'n' -> if you want to type 'sudo' yourself whenever you think you need to.
-USESUDO=y
+USESUDO?=y
+
+# Add here extra include directories
+#INCFLAGS=-I../your_include_directory
+
+# Add here your -L and -l linker options
+LIBS?=
 
 ##############################################################################
 ############################## Advanced tweaks ###############################
 ##############################################################################
+
+# Build also sources from the following directories:
+EXTRA_DIRS=
+
+# Uncomment (and eventually change the header file name)
+# to install an header file along with your target
+# (this is very common for libreries)
+# It is allowed only one single file with extension .h
+# Any file that it includes using doblue quotes (not angle brackets!) is going
+# to be installed as well
+#INSTALL_HEADER=$(TARGETNAME).h
 
 ROOTFS?=/
 
@@ -102,25 +119,11 @@ INSTALL=install -D
 RUN_POST_INSTALL_SCRIPT=$(POST_INSTALL_SCRIPT_CMD)
 endif
 
-# Add here extra include directories
-#INCFLAGS=-I../your_include_directory
-
 # CXXFLAGS will be the same
 CFLAGS=-Wall -O2 -fPIC
 
-LDFLAGS+=-L$(ROOTFS)/$(INSTALL_PREFIX)/lib -L$(ROOTFS)/usr/lib
-#LDFLAGS+=-L$(ROOTFS)/$(INSTALL_PREFIX)/lib64 -L$(ROOTFS)/usr/lib64
-
-# Build also sources from the following directories:
-EXTRA_DIRS=
-
-# Uncomment (and eventually change the header file name)
-# to install an header file along with your target
-# (this is very common for libreries)
-# It is allowed only one single file with extension .h
-# Any file that it includes using doblue quotes (not angle brackets!) is going
-# to be installed as well
-#INSTALL_HEADER=$(TARGETNAME).h
+LDFLAGS+=-L$(ROOTFS)/$(INSTALL_PREFIX)/lib -L$(ROOTFS)/usr/lib $(LIBS)
+#LDFLAGS+=-L$(ROOTFS)/$(INSTALL_PREFIX)/lib64 -L$(ROOTFS)/usr/lib64 $(LIBS)
 
 # You might want to customize this...
 ifeq ($(DEBUG),y)
@@ -131,9 +134,9 @@ else
 	CFLAGS+= -DNDEBUG
 endif
 
-# When building libraries, set this variable to 'y' to manually select which
+# When building libraries set this variable to 'y' to manually select which
 # function will be available through the library. If you choose to do this,
-# remember to mark "__public" all the function you want to export.
+# remember to mark "__public" all the functions you want to export.
 # For example:
 #                 int __public mypublicfunc(void) { ... }
 #
@@ -155,10 +158,12 @@ CFLAGS+=$(INCFLAGS)
 
 ifeq ($(CPLUSPLUS),y)
 	LINK=$(CXX)
+	MAKEDEP=$(CXX)
 	EXT=cpp
 	HEADERS=$(shell ls *.h *.hpp 2> /dev/null)
 else
 	LINK=$(CC)
+	MAKEDEP=$(CC)
 	EXT=c
 	HEADERS=$(shell ls *.h 2> /dev/null)
 endif
@@ -194,17 +199,18 @@ ifeq ($(TARGETTYPE),staticlib)
 	INSTALL_DIR?=lib
 endif
 
+ifneq ($(INSTALL_HEADER),)
+	# Note that here I use := instead of = because I want CFLAGS to expand immediately (before including $(VISHEADER))
+	HEADERS_TO_INSTALL:=$(shell $(MAKEDEP) $(CFLAGS) -MM $(INSTALL_HEADER) | sed 's,\($*\)\.o[ :]*,\1.h: ,g' | sed 's,\\,,g')
+	HEADERS_INSTALL_DIR=$(INSTALL_ROOT)/$(INSTALL_PREFIX)/include
+endif
+
 ifeq ($(OPTIMIZE_LIB_VISIBILITY),y)
 	VISHEADER=.__vis.h
 	HEADERS+=$(VISHEADER)
 	CFLAGS+=-fvisibility=hidden -include $(VISHEADER)
 else
 	VISHEADER=
-endif
-
-ifneq ($(INSTALL_HEADER),)
-	HEADERS_TO_INSTALL=$(shell gcc $(CFLAGS) -MM $(INSTALL_HEADER) | sed 's,\($*\)\.o[ :]*,\1.h: ,g' | sed 's,\\,,g')
-	HEADERS_INSTALL_DIR=$(INSTALL_ROOT)/$(INSTALL_PREFIX)/include
 endif
 
 CXXFLAGS=$(CFLAGS)
@@ -227,7 +233,7 @@ endif
 INSTALLTARGETS=$(TARGET)
 
 ifneq ($(INSTALL_HEADER),)
-	INSTALLTARGETS+=$(HEADERS_INSTALL_DIR)/$(INSTALL_HEADER)
+	INSTALLTARGETS+=$(HEADERS_INSTALL_DIR)/$(shell basename $(INSTALL_HEADER))
 endif
 
 ifneq ($(TARGETTYPE),lib)
@@ -250,12 +256,12 @@ endif
 
 -include $(DEP)
 
-# This few lines were inspired by:
+# These few lines were inspired by:
 # http://www.makelinux.net/make3/make3-CHP-2-SECT-7
 # Note: use -MM instead of -M if you do not want to include system headers in
 #       the dependencies
 %.d: %.$(EXT) $(VISHEADER)
-	@$(CC) $(CFLAGS) -MM $< > $@.$$$$;			\
+	@$(MAKEDEP) $(CFLAGS) -MM $< > $@.$$$$;			\
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
 	rm -f $@.$$$$
 
