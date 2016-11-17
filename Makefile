@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.9.8-rc3 (April 22nd, 2015)
+# Version 0.9.8-rc4 (November 17th, 2016)
 #
 # "One to build them all!"
 #
@@ -77,6 +77,17 @@ LIBS?=
 ##############################################################################
 ############################## Advanced tweaks ###############################
 ##############################################################################
+
+# Use this feature if you need to load a script that changes the environment
+# for all the commands executed in this makefile
+# i.e.: to me it is useful when I'm cross compiling to add the cross tools
+#       to the PATH and LD_LIBRARY_PATH.
+ENV_SCRIPT?=
+
+ifneq ($(ENV_SCRIPT),)
+IGNOREME := $(shell bash -c "source $(ENV_SCRIPT); env | sed 's/=/:=/' | sed 's/^/export /' > /tmp/shellenvformake")
+include /tmp/shellenvformake
+endif
 
 # Uncomment (and eventually change the header file name)
 # to install an header file along with your target
