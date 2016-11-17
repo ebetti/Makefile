@@ -6,7 +6,7 @@
 # The code was partially inspired by:
 # http://www.makelinux.net/make3/make3-CHP-2-SECT-7
 #
-# Version 0.9 (September 3rd, 2014)
+# Version 0.9.1 (September 26th, 2014)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -77,6 +77,11 @@ INCFLAGS=-I$(ROOTFS)/$(INSTALL_PREFIX)/include -I$(ROOTFS)/usr/include
 
 # Build also sources from the following directories:
 EXTRA_DIRS=
+
+# Uncomment (and eventually change the header file name)
+# to install an header file along with your target
+# (this is very common for libreries)
+#INSTALL_HEADER=$(TARGETNAME).h
 
 # You might want to customize this...
 ifeq ($(DEBUG),y)
@@ -150,6 +155,11 @@ else
 	VISHEADER=
 endif
 
+ifneq ($(INSTALL_HEADER),)
+	HEADERS_TO_INSTALL=$(shell gcc -MM $(INSTALL_HEADER) | cut -d ':' -f 2)
+	HEADERS_INSTALL_DIR=$(INSTALL_ROOT)/$(INSTALL_PREFIX)/include
+endif
+
 CXXFLAGS=$(CFLAGS)
 
 INSTALL_TARGET=$(INSTALL_ROOT)/$(INSTALL_PREFIX)/$(INSTALL_DIR)/$(shell basename $(TARGET))
@@ -209,9 +219,12 @@ tags: $(SRC) $(HEADERS)
 	@$(CTAGS) $^
 
 install: $(TARGET)
-	install -D $(TARGET) $(INSTALL_TARGET)
+	sudo install -D $(TARGET) $(INSTALL_TARGET)
 ifeq ($(TARGETTYPE),lib)
-	install -D $(TARGET:.so=.a) $(INSTALL_TARGET:.so=.a)
+	sudo install -D $(TARGET:.so=.a) $(INSTALL_TARGET:.so=.a)
+endif
+ifneq ($(HEADERS_TO_INSTALL),)
+	for h in $(HEADERS_TO_INSTALL) ; do sudo install $$h $(HEADERS_INSTALL_DIR)/$$h ; done
 endif
 
 .PHONY: clean
