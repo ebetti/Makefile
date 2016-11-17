@@ -1,7 +1,4 @@
-# "One to build them all!" :-)
-
-Author: Emiliano Betti, copyright (C) 2011
-e-mail: betti@linux.com
+## "One to build them all!" :-)
 
 This 'generic' Makefile is meant to build small applications, but also shared
 and static libraries.
@@ -9,7 +6,8 @@ and static libraries.
 Following a few rules (listed below) allows you to build your code with
 advanced features and almost no configuration.
 
-Main features are:
+## Main features
+
 - support for C and C++ code (C++ is partially tested though)
 - automatic header files dependency generation
 - support for building static or dynamic executables
@@ -18,13 +16,22 @@ Main features are:
 - special 'install' target to install binaries and header files
 - special 'pkg' target to create a .tar.gz packet
 
+## Motivation
+
+TO DO
+
+## How to use it
+
 In order to give you this features without requiring complex configurations, I
 fixed a few rules that keep things easy enough:
 
 TO DO -- Sorry!! :-)
 
+## Contributors
 
--------------- LICENCE -------------
+Author: Emiliano Betti, copyright (C) 2011, e-mail: betti@linux.com
+
+## License
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
