@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.9.8-rc1 (December 22nd, 2014)
+# Version 0.9.8-rc2 (April 18nd, 2015)
 #
 # "One to build them all!"
 #
@@ -57,16 +57,18 @@ TARGETTYPE?=exec
 # Set to 'y' to enable DEBUG
 DEBUG?=n
 
-# 'n' -> if your source code is C
-# 'y' -> if your source code is C++
-CPLUSPLUS?=n
-
-# 'y' -> if you want this Makefile to use 'sudo' when installing the target or
+# 'y' -> if you want this Makefile to use 'sudo' when installing target or
 # 	 creating a package
 # 'n' -> if you want to type 'sudo' yourself whenever you think you need to.
 USESUDO?=y
 
-# Add here extra include directories
+# Build also sources from all the directories listed in EXTRA_DIRS
+# By default, files from all subdirectories are built.
+# If you want to build only few directories, just list them in the variable.
+# Not to include any directory, leave the variable empty
+EXTRA_DIRS?=$(shell find * -follow -type d)
+
+# Add here extra include directories (EXTRA_DIRS are automatically added)
 #INCFLAGS=-I../your_include_directory
 
 # Add here your -L and -l linker options
@@ -75,9 +77,6 @@ LIBS?=
 ##############################################################################
 ############################## Advanced tweaks ###############################
 ##############################################################################
-
-# Build also sources from the following directories:
-EXTRA_DIRS=
 
 # Uncomment (and eventually change the header file name)
 # to install an header file along with your target
@@ -101,6 +100,11 @@ INSTALL_PREFIX?=/usr/local
 # Leave it commented to use defaults:
 # - 'lib' (or lib64) for libraries, 'bin' for executables
 #INSTALL_DIR=mydir
+
+# 'n' -> if your source code is C
+# 'y' -> if your source code is C++
+# When not defined, it's gonna be autodetected
+CPLUSPLUS?=
 
 #CROSS_COMPILE?=arm-arago-linux-gnueabi-
 CROSS_COMPILE?=
@@ -158,9 +162,29 @@ OPTIMIZE_LIB_VISIBILITY=n
 ####### NOTE! You should not need to change anything below this line! ########
 ##############################################################################
 
-ifneq ($(EXTRA_DIRS),)
-	INCFLAGS+=$(shell for i in $(EXTRA_DIRS) ; do echo "-I$${i} " ; done)
-endif
+CSRC:=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.c 2>/dev/null ; done)
+CSRC+=$(shell ls *.c 2>/dev/null)
+CPPSRC1:=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.cpp 2>/dev/null ; done)
+CPPSRC1+=$(shell ls *.cpp 2>/dev/null)
+CPPSRC2:=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.cc 2>/dev/null ; done)
+CPPSRC2+=$(shell ls *.cc 2>/dev/null)
+CPPSRC3:=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.C 2>/dev/null ; done)
+CPPSRC3+=$(shell ls *.C 2>/dev/null)
+CPPSRC:=$(CPPSRC1) $(CPPSRC2) $(CPPSRC3)
+SRC:=$(CSRC) $(CPPSRC)
+COBJ:=$(CSRC:.c=.o)
+CPPOBJ:=$(CPPSRC1:.cpp=.o)
+CPPOBJ+=$(CPPSRC2:.cc=.o)
+CPPOBJ+=$(CPPSRC3:.C=.o)
+OBJ:=$(COBJ) $(CPPOBJ)
+DEP:=$(COBJ:.o=.d)
+DEP+=$(CPPSRC1:.cpp=.dd1)
+DEP+=$(CPPSRC2:.cc=.dd2)
+DEP+=$(CPPSRC3:.C=.dd3)
+HEADERS=$(shell ls *.h *.hpp 2> /dev/null)
+HEADERS+=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.h $${i}/*.hpp  2>/dev/null ; done)
+
+INCFLAGS+=$(shell for i in $(EXTRA_DIRS) ; do echo "-I$${i} " ; done)
 
 # Please note that the order of "-I" directives is important. My choice is to
 # first look for headers in the sources, and than in the system directories.
@@ -169,16 +193,26 @@ INCFLAGS:=-I. $(INCFLAGS) -I$(ROOTFS)/$(INSTALL_PREFIX)/include -I$(ROOTFS)/usr/
 CFLAGS+=$(INCFLAGS)
 CXXFLAGS+=$(INCFLAGS)
 
+ifeq ($(CPLUSPLUS),)
+ifeq ($(CPPSRC),)
+	CPLUSPLUS=n
+else
+	CPLUSPLUS=y
+endif
+endif
+
 ifeq ($(CPLUSPLUS),y)
 	LINK=$(CXX) $(CXXFLAGS)
+	# Note that here I use := instead of = because I want CFLAGS to expand
+	# immediately (before including $(VISHEADER))
+	# FIXME!! I should do something better here... don't really need MAKEDEP
 	MAKEDEP:=$(CXX) $(CXXFLAGS)
-	EXT=cpp
-	HEADERS=$(shell ls *.h *.hpp 2> /dev/null)
 else
 	LINK=$(CC) $(CFLAGS)
+	# Note that here I use := instead of = because I want CFLAGS to expand
+	# immediately (before including $(VISHEADER))
+	# FIXME!! I should do something better here... don't really need MAKEDEP
 	MAKEDEP:=$(CC) $(CFLAGS)
-	EXT=c
-	HEADERS=$(shell ls *.h 2> /dev/null)
 endif
 
 TARGET=$(TARGETNAME)
@@ -213,7 +247,6 @@ ifeq ($(TARGETTYPE),staticlib)
 endif
 
 ifneq ($(INSTALL_HEADER),)
-	# Note that here I use := instead of = because I want CFLAGS to expand immediately (before including $(VISHEADER))
 	HEADERS_TO_INSTALL:=$(shell $(MAKEDEP) -MM $(INSTALL_HEADER) | sed 's,\($*\)\.o[ :]*,\1.h: ,g' | sed 's,\\,,g')
 	HEADERS_INSTALL_DIR=$(INSTALL_ROOT)/$(INSTALL_PREFIX)/include
 endif
@@ -228,11 +261,6 @@ else
 endif
 
 INSTALL_TARGET=$(INSTALL_ROOT)/$(INSTALL_PREFIX)/$(INSTALL_DIR)/$(shell basename $(TARGET))
-
-SRC:=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.$(EXT) ; done)
-SRC+=$(shell ls *.$(EXT))
-OBJ=$(SRC:.$(EXT)=.o)
-DEP=$(OBJ:.o=.d)
 
 CTAGS=$(shell which ctags 2>/dev/null)
 
@@ -271,8 +299,23 @@ endif
 # http://www.makelinux.net/make3/make3-CHP-2-SECT-7
 # Note: use -MM instead of -M if you do not want to include system headers in
 #       the dependencies
-%.d: %.$(EXT) $(VISHEADER)
-	@$(MAKEDEP) -MM $< > $@.$$$$;				\
+%.d: %.c $(VISHEADER)
+	@$(CC) $(CFLAGS) -MM $< > $@.$$$$;			\
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
+	rm -f $@.$$$$
+
+%.dd1: %.cpp $(VISHEADER)
+	@$(CXX) $(CXXFLAGS) -MM $< > $@.$$$$;			\
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
+	rm -f $@.$$$$
+
+%.dd2: %.cc $(VISHEADER)
+	@$(CXX) $(CXXFLAGS) -MM $< > $@.$$$$;			\
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
+	rm -f $@.$$$$
+
+%.dd3: %.C $(VISHEADER)
+	@$(CXX) $(CXXFLAGS) -MM $< > $@.$$$$;			\
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
 	rm -f $@.$$$$
 
@@ -332,12 +375,14 @@ endif
 .PHONY: clean
 
 clean:
-	rm -f *.d *.o $(TARGET) tags $(VISHEADER)
-	rm -rf $(TMPDIR) $(PKG)
+	@rm -f *.d *.dd?
+	@rm -vf *.o $(TARGET) tags $(VISHEADER)
+	@rm -vrf $(TMPDIR) $(PKG)
 ifeq ($(TARGETTYPE),lib)
-	rm -f $(TARGET:.so=.a)
+	@rm -vf $(TARGET:.so=.a)
 endif
-ifneq ($(EXTRA_DIRS),)
-	for i in $(EXTRA_DIRS) ; do rm -f $${i}/*.d $${i}/*.o ; done
-endif
+	@for i in $(EXTRA_DIRS) ; do		\
+		rm -f $${i}/*.d $${i}/*.dd? ;	\
+		rm -vf $${i}/*.o ; 		\
+	done
 
