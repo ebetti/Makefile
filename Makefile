@@ -1,12 +1,21 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# This is a generic Makefile with automatic dependency generation.
+# Version 0.9.6 (November 4th, 2014)
 #
-# The code was partially inspired by:
-# http://www.makelinux.net/make3/make3-CHP-2-SECT-7
+# "One to build them all!"
 #
-# Version 0.9.4 (October 9th, 2014)
+# This Makefile is meant to be a 'generic' Makefile, useful to build
+# simple applications, but also shared and static libraries.
+# Main features are:
+# - support for C and C++ code (C++ is partially tested though)
+# - automatic header files dependency generation
+# - support for building static or dynamic executables
+# - support for building shared and static libraries
+# - support for customize 'visibility' in libraries
+# - special 'install' target to install binaries and header files
+# - special 'pkg' target to create a .tar.gz packet
+#
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +33,12 @@
 ##############################################################################
 ############################ Basic configuration #############################
 ##############################################################################
+
+# To customize the behaviour of this Makefile you have two options (non mutual
+# exclusive):
+# - edit this file
+# - create a config.mk file that overrides what you want to personalize
+-include config.mk
 
 # Please set your own target name.
 # Note that when building libraries the final library name will be:
@@ -46,11 +61,20 @@ DEBUG?=n
 # 'y' -> if your source code is C++
 CPLUSPLUS=n
 
+# 'y' -> if you want this Makefile to use 'sudo' when installing the target or
+# 	 creating a package
+# 'n' -> if you want to type 'sudo' yourself whenever you think you need to.
+USESUDO=y
+
 ##############################################################################
 ############################## Advanced tweaks ###############################
 ##############################################################################
 
 ROOTFS?=/
+
+TMPDIR=$(shell pwd -P)/._tmp
+PKG=$(shell pwd -P)/$(TARGETNAME).tar.gz
+pkg: INSTALL_ROOT=$(TMPDIR)
 
 INSTALL_ROOT?=$(ROOTFS)
 
@@ -67,8 +91,19 @@ CC=$(CROSS_COMPILE)gcc
 CXX=$(CROSS_COMPILE)g++
 AR=$(CROSS_COMPILE)ar
 
+POST_INSTALL_SCRIPT=./post_install.sh
+POST_INSTALL_SCRIPT_CMD=ROOTFS=$(ROOTFS) INSTALL_ROOT=$(INSTALL_ROOT) INSTALL_PREFIX=$(INSTALL_PREFIX) TARGETNAME=$(TARGETNAME) $(POST_INSTALL_SCRIPT)
+
+ifeq ($(USESUDO),y)
+INSTALL=sudo install -D
+RUN_POST_INSTALL_SCRIPT=sudo $(POST_INSTALL_SCRIPT_CMD)
+else
+INSTALL=install -D
+RUN_POST_INSTALL_SCRIPT=$(POST_INSTALL_SCRIPT_CMD)
+endif
+
 # Add here extra include directories
-#INCFLAGS=-I../your_directory
+#INCFLAGS=-I../your_include_directory
 
 # CXXFLAGS will be the same
 CFLAGS=-Wall -O2 -fPIC
@@ -89,7 +124,9 @@ EXTRA_DIRS=
 
 # You might want to customize this...
 ifeq ($(DEBUG),y)
-	CFLAGS+= -g
+	# The following flags are needed to support backtrace() function on
+	# both x86 and arm.
+	CFLAGS+= -g -rdynamic -fno-omit-frame-pointer -fno-inline -funwind-tables
 else
 	CFLAGS+= -DNDEBUG
 endif
@@ -106,11 +143,13 @@ OPTIMIZE_LIB_VISIBILITY=n
 ####### NOTE! You should not need to change anything below this line! ########
 ##############################################################################
 
-INCFLAGS+=-I$(ROOTFS)/$(INSTALL_PREFIX)/include -I$(ROOTFS)/usr/include
-
 ifneq ($(EXTRA_DIRS),)
 	INCFLAGS+=$(shell for i in $(EXTRA_DIRS) ; do echo "-I$${i} " ; done)
 endif
+
+# Please note that the order of "-I" directives is important. My choice is to
+# first look for headers in the sources, and than in the system directories.
+INCFLAGS:=-I. $(INCFLAGS) -I$(ROOTFS)/$(INSTALL_PREFIX)/include -I$(ROOTFS)/usr/include
 
 CFLAGS+=$(INCFLAGS)
 
@@ -185,8 +224,10 @@ else
 	ALLTARGETS=$(TARGET)
 endif
 
+INSTALLTARGETS=$(TARGET)
+
 ifneq ($(INSTALL_HEADER),)
-	ALLTARGETS+=$(HEADERS_INSTALL_DIR)/$(INSTALL_HEADER)
+	INSTALLTARGETS+=$(HEADERS_INSTALL_DIR)/$(INSTALL_HEADER)
 endif
 
 ifneq ($(TARGETTYPE),lib)
@@ -209,6 +250,8 @@ endif
 
 -include $(DEP)
 
+# This few lines were inspired by:
+# http://www.makelinux.net/make3/make3-CHP-2-SECT-7
 # Note: use -MM instead of -M if you do not want to include system headers in
 #       the dependencies
 %.d: %.$(EXT) $(VISHEADER)
@@ -230,20 +273,50 @@ endif
 tags: $(SRC) $(HEADERS)
 	@$(CTAGS) $^
 
-install: $(TARGET)
-	sudo install -D $(TARGET) $(INSTALL_TARGET)
+install: $(INSTALLTARGETS)
+	@echo "Installing binaries:"
+	@echo " * $(TARGET) -> $(INSTALL_TARGET)"
+	@$(INSTALL) $(TARGET) $(INSTALL_TARGET)
 ifeq ($(TARGETTYPE),lib)
-	sudo install -D $(TARGET:.so=.a) $(INSTALL_TARGET:.so=.a)
+	@echo " * $(TARGET:.so=.a) -> $(INSTALL_TARGET:.so=.a)"
+	@$(INSTALL) $(TARGET:.so=.a) $(INSTALL_TARGET:.so=.a)
 endif
+ifneq ($(POST_INSTALL_SCRIPT),)
+	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT)
+endif
+
 ifneq ($(HEADERS_TO_INSTALL),)
 $(HEADERS_INSTALL_DIR)/$(HEADERS_TO_INSTALL)
-	for h in $^ ; do sudo install -D $$h $(HEADERS_INSTALL_DIR)/$$h ; done
+	@echo "Installing headers:"
+	@for h in $^ ; do						\
+		bh=$$(basename $$h);					\
+		test "$$h" = "$(HEADERS_INSTALL_DIR)/$$bh" &&		\
+			echo " ! Skipping already installed file $$h" &&\
+		       	continue;					\
+		echo " * $$h -> $(HEADERS_INSTALL_DIR)/$$bh";		\
+		$(INSTALL) $$h $(HEADERS_INSTALL_DIR)/$$bh;		\
+	done
 endif
+
+$(TMPDIR):
+	@mkdir -p $@
+
+pkg: clean $(TMPDIR) all install
+	@cd $(TMPDIR) && tar czvf $(PKG) *
+ifeq ($(USESUDO),y)
+	@sudo rm -rf $(TMPDIR)
+else
+	@rm -rf $(TMPDIR)
+endif
+	@echo ""
+	@echo "Package $(PKG) built"
+	@echo ""
 
 .PHONY: clean
 
 clean:
 	rm -f *.d *.o $(TARGET) tags $(VISHEADER)
+	rm -rf $(TMPDIR) $(PKG)
 ifeq ($(TARGETTYPE),lib)
 	rm -f $(TARGET:.so=.a)
 endif
