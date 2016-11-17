@@ -6,7 +6,7 @@
 # The code was partially inspired by:
 # http://www.makelinux.net/make3/make3-CHP-2-SECT-7
 #
-# Version 0.9.2 (October 2th, 2014)
+# Version 0.9.3 (October 7th, 2014)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -224,7 +224,7 @@ ifeq ($(TARGETTYPE),lib)
 	sudo install -D $(TARGET:.so=.a) $(INSTALL_TARGET:.so=.a)
 endif
 ifneq ($(HEADERS_TO_INSTALL),)
-	for h in $(HEADERS_TO_INSTALL) ; do sudo install $$h $(HEADERS_INSTALL_DIR)/$$h ; done
+	for h in $(HEADERS_TO_INSTALL) ; do sudo install -D $$h $(HEADERS_INSTALL_DIR)/$$h ; done
 endif
 
 .PHONY: clean
