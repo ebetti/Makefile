@@ -6,7 +6,7 @@
 # The code was partially inspired by:
 # http://www.makelinux.net/make3/make3-CHP-2-SECT-7
 #
-# Version 0.9.3 (October 7th, 2014)
+# Version 0.9.4 (October 9th, 2014)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -67,10 +67,11 @@ CC=$(CROSS_COMPILE)gcc
 CXX=$(CROSS_COMPILE)g++
 AR=$(CROSS_COMPILE)ar
 
-INCFLAGS=-I$(ROOTFS)/$(INSTALL_PREFIX)/include -I$(ROOTFS)/usr/include
+# Add here extra include directories
+#INCFLAGS=-I../your_directory
 
 # CXXFLAGS will be the same
-CFLAGS=-Wall -O2 $(INCFLAGS) -fPIC
+CFLAGS=-Wall -O2 -fPIC
 
 LDFLAGS+=-L$(ROOTFS)/$(INSTALL_PREFIX)/lib -L$(ROOTFS)/usr/lib
 #LDFLAGS+=-L$(ROOTFS)/$(INSTALL_PREFIX)/lib64 -L$(ROOTFS)/usr/lib64
@@ -81,6 +82,9 @@ EXTRA_DIRS=
 # Uncomment (and eventually change the header file name)
 # to install an header file along with your target
 # (this is very common for libreries)
+# It is allowed only one single file with extension .h
+# Any file that it includes using doblue quotes (not angle brackets!) is going
+# to be installed as well
 #INSTALL_HEADER=$(TARGETNAME).h
 
 # You might want to customize this...
@@ -102,9 +106,13 @@ OPTIMIZE_LIB_VISIBILITY=n
 ####### NOTE! You should not need to change anything below this line! ########
 ##############################################################################
 
+INCFLAGS+=-I$(ROOTFS)/$(INSTALL_PREFIX)/include -I$(ROOTFS)/usr/include
+
 ifneq ($(EXTRA_DIRS),)
 	INCFLAGS+=$(shell for i in $(EXTRA_DIRS) ; do echo "-I$${i} " ; done)
 endif
+
+CFLAGS+=$(INCFLAGS)
 
 ifeq ($(CPLUSPLUS),y)
 	LINK=$(CXX)
@@ -156,7 +164,7 @@ else
 endif
 
 ifneq ($(INSTALL_HEADER),)
-	HEADERS_TO_INSTALL=$(shell gcc -MM $(INSTALL_HEADER) | cut -d ':' -f 2)
+	HEADERS_TO_INSTALL=$(shell gcc $(CFLAGS) -MM $(INSTALL_HEADER) | sed 's,\($*\)\.o[ :]*,\1.h: ,g' | sed 's,\\,,g')
 	HEADERS_INSTALL_DIR=$(INSTALL_ROOT)/$(INSTALL_PREFIX)/include
 endif
 
@@ -175,6 +183,10 @@ ifneq ($(CTAGS),)
 	ALLTARGETS=$(TARGET) tags
 else
 	ALLTARGETS=$(TARGET)
+endif
+
+ifneq ($(INSTALL_HEADER),)
+	ALLTARGETS+=$(HEADERS_INSTALL_DIR)/$(INSTALL_HEADER)
 endif
 
 ifneq ($(TARGETTYPE),lib)
@@ -224,7 +236,8 @@ ifeq ($(TARGETTYPE),lib)
 	sudo install -D $(TARGET:.so=.a) $(INSTALL_TARGET:.so=.a)
 endif
 ifneq ($(HEADERS_TO_INSTALL),)
-	for h in $(HEADERS_TO_INSTALL) ; do sudo install -D $$h $(HEADERS_INSTALL_DIR)/$$h ; done
+$(HEADERS_INSTALL_DIR)/$(HEADERS_TO_INSTALL)
+	for h in $^ ; do sudo install -D $$h $(HEADERS_INSTALL_DIR)/$$h ; done
 endif
 
 .PHONY: clean
