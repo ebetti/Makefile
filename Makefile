@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.9.8-rc2 (April 18nd, 2015)
+# Version 0.9.8-rc3 (April 22nd, 2015)
 #
 # "One to build them all!"
 #
@@ -361,7 +361,10 @@ endif
 $(TMPDIR):
 	@mkdir -p $@
 
-pkg: clean $(TMPDIR) all install
+# Doing 'make install' inside this rule is necessary to use the special
+# INSTALL_ROOT directory. There is probably a fancier way, but this one works.
+pkg: clean $(TMPDIR) all
+	@INSTALL_ROOT=$(INSTALL_ROOT) make install
 	@cd $(TMPDIR) && tar czvf $(PKG) *
 ifeq ($(USESUDO),y)
 	@sudo rm -rf $(TMPDIR)
