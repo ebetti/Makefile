@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.9.8-rc4 (November 17th, 2016)
+# Version 0.9.8-rc8 (November 22th, 2016)
 #
 # "One to build them all!"
 #
@@ -72,7 +72,10 @@ EXTRA_DIRS?=$(shell find * -follow -type d)
 #INCFLAGS=-I../your_include_directory
 
 # Add here your -L and -l linker options
-LIBS?=
+LDFLAGS?=
+
+# Add here the static libraries (*.a files) you want to link
+STATICLIBS?=
 
 ##############################################################################
 ############################## Advanced tweaks ###############################
@@ -101,7 +104,7 @@ ROOTFS?=/
 
 TMPDIR=$(shell pwd -P)/._tmp
 PKG=$(shell pwd -P)/$(TARGETNAME).tar.gz
-pkg: INSTALL_ROOT=$(TMPDIR)
+install-pkg: INSTALL_ROOT=$(TMPDIR)
 
 INSTALL_ROOT?=$(ROOTFS)
 
@@ -111,11 +114,6 @@ INSTALL_PREFIX?=/usr/local
 # Leave it commented to use defaults:
 # - 'lib' (or lib64) for libraries, 'bin' for executables
 #INSTALL_DIR=mydir
-
-# 'n' -> if your source code is C
-# 'y' -> if your source code is C++
-# When not defined, it's gonna be autodetected
-CPLUSPLUS?=
 
 #CROSS_COMPILE?=arm-arago-linux-gnueabi-
 CROSS_COMPILE?=
@@ -132,6 +130,7 @@ endif
 
 CC=$(CROSS_COMPILE)gcc
 CXX=$(CROSS_COMPILE)g++
+CPP=$(CROSS_COMPILE)cpp
 AR=$(CROSS_COMPILE)ar
 
 POST_INSTALL_SCRIPT=./post_install.sh
@@ -145,20 +144,22 @@ INSTALL=install -D
 RUN_POST_INSTALL_SCRIPT=$(POST_INSTALL_SCRIPT_CMD)
 endif
 
-CFLAGS?=-Wall -O2 -fPIC
+CFLAGS?=-Wall -Wextra -Wno-unused-parameter -fPIC # -Wno-missing-field-initializers
 CXXFLAGS?=$(CFLAGS)
 
-LDFLAGS+=-L$(ROOTFS)/$(INSTALL_PREFIX)/$(LIBSUBDIR) -L$(ROOTFS)/usr/$(LIBSUBDIR) $(LIBS)
+LDFLAGS:=-L$(INSTALL_ROOT)/$(INSTALL_PREFIX)/$(LIBSUBDIR)	\
+	 -L$(ROOTFS)/$(INSTALL_PREFIX)/$(LIBSUBDIR) 		\
+	 -L$(ROOTFS)/usr/$(LIBSUBDIR) $(LDFLAGS)
 
 # You might want to customize this...
 ifeq ($(DEBUG),y)
 	# The following flags are needed to support backtrace() function on
 	# both x86 and arm.
-	CFLAGS+= -g -rdynamic -fno-omit-frame-pointer -fno-inline -funwind-tables
-	CXXFLAGS+= -g -rdynamic -fno-omit-frame-pointer -fno-inline -funwind-tables
+	CFLAGS+= -g -O0 -rdynamic -fno-omit-frame-pointer -fno-inline -funwind-tables
+	CXXFLAGS+= -g -O0 -rdynamic -fno-omit-frame-pointer -fno-inline -funwind-tables
 else
-	CFLAGS+= -DNDEBUG
-	CXXFLAGS+= -DNDEBUG
+	CFLAGS+= -O3 -DNDEBUG
+	CXXFLAGS+= -O3 -DNDEBUG
 endif
 
 # When building libraries set this variable to 'y' to manually select which
@@ -195,36 +196,19 @@ DEP+=$(CPPSRC3:.C=.dd3)
 HEADERS=$(shell ls *.h *.hpp 2> /dev/null)
 HEADERS+=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.h $${i}/*.hpp  2>/dev/null ; done)
 
+.SECONDARY: $(DEP) $(OBJ)
+
 INCFLAGS+=$(shell for i in $(EXTRA_DIRS) ; do echo "-I$${i} " ; done)
 
 # Please note that the order of "-I" directives is important. My choice is to
 # first look for headers in the sources, and than in the system directories.
-INCFLAGS:=-I. $(INCFLAGS) -I$(ROOTFS)/$(INSTALL_PREFIX)/include -I$(ROOTFS)/usr/include
+INCFLAGS:=-I. $(INCFLAGS) -I$(INSTALL_ROOT)/$(INSTALL_PREFIX)/include	\
+		-I$(ROOTFS)/$(INSTALL_PREFIX)/include -I$(ROOTFS)/usr/include
 
 CFLAGS+=$(INCFLAGS)
 CXXFLAGS+=$(INCFLAGS)
 
-ifeq ($(CPLUSPLUS),)
-ifeq ($(CPPSRC),)
-	CPLUSPLUS=n
-else
-	CPLUSPLUS=y
-endif
-endif
-
-ifeq ($(CPLUSPLUS),y)
-	LINK=$(CXX) $(CXXFLAGS)
-	# Note that here I use := instead of = because I want CFLAGS to expand
-	# immediately (before including $(VISHEADER))
-	# FIXME!! I should do something better here... don't really need MAKEDEP
-	MAKEDEP:=$(CXX) $(CXXFLAGS)
-else
-	LINK=$(CC) $(CFLAGS)
-	# Note that here I use := instead of = because I want CFLAGS to expand
-	# immediately (before including $(VISHEADER))
-	# FIXME!! I should do something better here... don't really need MAKEDEP
-	MAKEDEP:=$(CC) $(CFLAGS)
-endif
+LINK=$(CC) $(LDFLAGS)
 
 TARGET=$(TARGETNAME)
 
@@ -258,7 +242,9 @@ ifeq ($(TARGETTYPE),staticlib)
 endif
 
 ifneq ($(INSTALL_HEADER),)
-	HEADERS_TO_INSTALL:=$(shell $(MAKEDEP) -MM $(INSTALL_HEADER) | sed 's,\($*\)\.o[ :]*,\1.h: ,g' | sed 's,\\,,g')
+	# Note that here I use := instead of = because I want CFLAGS to expand
+	# immediately (before including $(VISHEADER))
+	HEADERS_TO_INSTALL:=$(shell $(CPP) $(CFLAGS) $(CXXFLAGS) -MM $(INSTALL_HEADER) | sed 's,\($*\)\.o[ :]*,\1.h: ,g' | sed 's,\\,,g')
 	HEADERS_INSTALL_DIR=$(INSTALL_ROOT)/$(INSTALL_PREFIX)/include
 endif
 
@@ -301,10 +287,14 @@ all: $(ALLTARGETS) $(CTAGSTARGET)
 
 ifneq ($(TARGETTYPE),staticlib)
 $(TARGET): $(OBJ)
-	$(LINK) $(OBJ) $(LDFLAGS) -o $@
+	$(LINK) $(OBJ) $(STATICLIBS) -o $@
 endif
 
+clean: NODEP=y
+
+ifneq ($(NODEP),y)
 -include $(DEP)
+endif
 
 # These few lines were inspired by:
 # http://www.makelinux.net/make3/make3-CHP-2-SECT-7
@@ -344,7 +334,7 @@ endif
 tags: $(SRC) $(HEADERS)
 	@$(CTAGS) $^
 
-install: $(INSTALLTARGETS)
+install-pkg install: $(INSTALLTARGETS)
 	@echo "Installing binaries:"
 	@echo " * $(TARGET) -> $(INSTALL_TARGET)"
 	@$(INSTALL) $(TARGET) $(INSTALL_TARGET)
@@ -357,13 +347,11 @@ ifneq ($(POST_INSTALL_SCRIPT),)
 endif
 
 ifneq ($(HEADERS_TO_INSTALL),)
-$(HEADERS_INSTALL_DIR)/$(HEADERS_TO_INSTALL)
+$(HEADERS_INSTALL_DIR)/$(HEADERS_TO_INSTALL) $(INSTALL_HEADER)
 	@echo "Installing headers:"
 	@for h in $^ ; do						\
 		bh=$$(basename $$h);					\
-		test "$$h" = "$(HEADERS_INSTALL_DIR)/$$bh" &&		\
-			echo " ! Skipping already installed file $$h" &&\
-		       	continue;					\
+		test "$$h" = "$(HEADERS_INSTALL_DIR)/$$bh" && continue;	\
 		echo " * $$h -> $(HEADERS_INSTALL_DIR)/$$bh";		\
 		$(INSTALL) $$h $(HEADERS_INSTALL_DIR)/$$bh;		\
 	done
@@ -372,11 +360,9 @@ endif
 $(TMPDIR):
 	@mkdir -p $@
 
-# Doing 'make install' inside this rule is necessary to use the special
-# INSTALL_ROOT directory. There is probably a fancier way, but this one works.
 pkg: clean $(TMPDIR) all
-	@INSTALL_ROOT=$(INSTALL_ROOT) make install
-	@cd $(TMPDIR) && tar czvf $(PKG) *
+	@INSTALL_ROOT=$(TMPDIR) make install-pkg
+	cd $(TMPDIR) && tar czvf $(PKG) *
 ifeq ($(USESUDO),y)
 	@sudo rm -rf $(TMPDIR)
 else
@@ -386,17 +372,17 @@ endif
 	@echo "Package $(PKG) built"
 	@echo ""
 
-.PHONY: clean
+.PHONY: all clean install install-pkg pkg
 
 clean:
-	@rm -f *.d *.dd?
-	@rm -vf *.o $(TARGET) tags $(VISHEADER)
+	@rm -f *.d *.dd? *.o
+	@rm -vf $(TARGET) tags $(VISHEADER)
 	@rm -vrf $(TMPDIR) $(PKG)
 ifeq ($(TARGETTYPE),lib)
 	@rm -vf $(TARGET:.so=.a)
 endif
 	@for i in $(EXTRA_DIRS) ; do		\
 		rm -f $${i}/*.d $${i}/*.dd? ;	\
-		rm -vf $${i}/*.o ; 		\
+		rm -f $${i}/*.o ; 		\
 	done
 
