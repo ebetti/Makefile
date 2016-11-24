@@ -72,9 +72,22 @@ EXTRA_DIRS?=$(shell find * -follow -type d)
 #INCFLAGS=-I../your_include_directory
 
 # Add here your -L and -l linker options
+# Remember to add -lstdc++ when linking C++ code
 LDFLAGS?=
 
 # Add here the static libraries (*.a files) you want to link
+# IMPORTANT NOTE
+# The GNU ld linker is a so-called smart linker. It will keep track of the
+# functions used by preceding static libraries, permanently tossing out those
+# functions that are not used from its lookup tables. The result is that if you
+# link a static library too early, then the functions in that library are no
+# longer available to static libraries later on the link line.
+# The typical UNIX linker works from left to right, so put all your dependent
+# libraries on the left, and the ones that satisfy those dependencies on the
+# right of the link line. You may find that some libraries depend on others
+# while at the same time other libraries depend on them. This is where it gets
+# complicated. When it comes to circular references, fix your code!
+# For more info: http://stackoverflow.com/questions/45135/why-does-the-order-in-which-libraries-are-linked-sometimes-cause-errors-in-gcc
 STATICLIBS?=
 
 ##############################################################################
