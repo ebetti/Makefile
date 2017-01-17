@@ -116,19 +116,17 @@ endif
 # to be installed as well
 #INSTALL_HEADER=$(TARGETNAME).h
 
-ROOTFS?=/
+# The filesystem which you build against
+# Note that in this file system will also be installed header files and libraries.
+BUILDFS?=/
 
-TMPDIR=$(shell pwd -P)/._tmp
-PKG=$(shell pwd -P)/$(TARGETNAME).tar.gz
-
-DEVTMPDIR=$(shell pwd -P)/._devtmp
-DEVPKG=$(shell pwd -P)/$(TARGETNAME)-dev.tar.gz
-
-INSTALL_ROOT?=$(ROOTFS)
+# The filesystem where you want your binary files (executables and shared
+# libraries) to be installed into
+INSTALL_ROOT?=$(BUILDFS)
 
 INSTALL_PREFIX?=/usr/local
 
-# INSTALL_PREFIX subdirectory where to install targets
+# INSTALL_PREFIX's subdirectory where to install targets
 # Leave it commented to use defaults:
 # - 'lib' (or lib64) for libraries, 'bin' for executables
 #INSTALL_DIR=mydir
@@ -151,8 +149,14 @@ CXX=$(CROSS_COMPILE)g++
 CPP=$(CROSS_COMPILE)cpp
 AR=$(CROSS_COMPILE)ar
 
+TMPDIR=$(shell pwd -P)/._tmp
+PKG=$(shell pwd -P)/$(TARGETNAME).tar.gz
+
+DEVTMPDIR=$(shell pwd -P)/._devtmp
+DEVPKG=$(shell pwd -P)/$(TARGETNAME)-dev.tar.gz
+
 POST_INSTALL_SCRIPT=./post_install.sh
-POST_INSTALL_SCRIPT_CMD=ROOTFS=$(ROOTFS) INSTALL_ROOT=$(INSTALL_ROOT) INSTALL_PREFIX=$(INSTALL_PREFIX) TARGETNAME=$(TARGETNAME) $(POST_INSTALL_SCRIPT)
+POST_INSTALL_SCRIPT_CMD=BUILDFS=$(BUILDFS) INSTALL_ROOT=$(INSTALL_ROOT) INSTALL_PREFIX=$(INSTALL_PREFIX) TARGETNAME=$(TARGETNAME) $(POST_INSTALL_SCRIPT)
 
 ifeq ($(USESUDO),y)
 INSTALL=sudo install -D
@@ -165,8 +169,8 @@ endif
 CFLAGS?=-Wall -Wextra -Wno-unused-parameter -fPIC # -Wno-missing-field-initializers
 CXXFLAGS?=$(CFLAGS)
 
-LDFLAGS:=-L$(ROOTFS)/$(INSTALL_PREFIX)/$(LIBSUBDIR) 		\
-	 -L$(ROOTFS)/usr/$(LIBSUBDIR) $(LDFLAGS)
+LDFLAGS:=-L$(BUILDFS)/$(INSTALL_PREFIX)/$(LIBSUBDIR) 		\
+	 -L$(BUILDFS)/usr/$(LIBSUBDIR) $(LDFLAGS)
 
 # You might want to customize this...
 ifeq ($(DEBUG),y)
@@ -219,7 +223,7 @@ INCFLAGS+=$(shell for i in $(EXTRA_DIRS) ; do echo "-I$${i} " ; done)
 
 # Please note that the order of "-I" directives is important. My choice is to
 # first look for headers in the sources, and than in the system directories.
-INCFLAGS:=-I. $(INCFLAGS) -I$(ROOTFS)/$(INSTALL_PREFIX)/include -I$(ROOTFS)/usr/include
+INCFLAGS:=-I. $(INCFLAGS) -I$(BUILDFS)/$(INSTALL_PREFIX)/include -I$(BUILDFS)/usr/include
 
 CFLAGS+=$(INCFLAGS)
 CXXFLAGS+=$(INCFLAGS)
@@ -261,7 +265,7 @@ ifneq ($(INSTALL_HEADER),)
 	# Note that here I use := instead of = because I want CFLAGS to expand
 	# immediately (before including $(VISHEADER))
 	HEADERS_TO_INSTALL:=$(shell PATH=$(PATH) $(CPP) $(CFLAGS) $(CXXFLAGS) -MM $(INSTALL_HEADER) | sed 's,\($*\)\.o[ :]*,\1.h: ,g' | sed 's,\\,,g')
-	HEADERS_INSTALL_DIR=$(ROOTFS)/$(INSTALL_PREFIX)/include
+	HEADERS_INSTALL_DIR=$(BUILDFS)/$(INSTALL_PREFIX)/include
 endif
 
 ifeq ($(OPTIMIZE_LIB_VISIBILITY),y)
@@ -274,7 +278,7 @@ else
 endif
 
 INSTALL_TARGET=$(INSTALL_ROOT)/$(INSTALL_PREFIX)/$(INSTALL_DIR)/$(shell basename $(TARGET))
-ROOTFS_TARGET=$(ROOTFS)/$(INSTALL_PREFIX)/$(INSTALL_DIR)/$(shell basename $(TARGET))
+BUILDFS_TARGET=$(BUILDFS)/$(INSTALL_PREFIX)/$(INSTALL_DIR)/$(shell basename $(TARGET))
 
 CTAGS=$(shell which ctags 2>/dev/null)
 
@@ -368,14 +372,14 @@ endif
 
 install-dev-pkg: $(INSTALLTARGETS)
 ifneq ($(findstring lib,$(TARGETTYPE)),)
-ifneq ($(INSTALL_ROOT),$(ROOTFS))
-	@echo "Installing binaries to your dev filesystem:"
-	@echo " * $(TARGET) -> $(ROOTFS_TARGET)"
-	@$(INSTALL) $(TARGET) $(ROOTFS_TARGET)
+ifneq ($(INSTALL_ROOT),$(BUILDFS))
+	@echo "Installing binaries to your build filesystem:"
+	@echo " * $(TARGET) -> $(BUILDFS_TARGET)"
+	@$(INSTALL) $(TARGET) $(BUILDFS_TARGET)
 endif
 ifeq ($(TARGETTYPE),lib)
-	@echo " * $(TARGET:.so=.a) -> $(ROOTFS_TARGET:.so=.a)"
-	@$(INSTALL) $(TARGET:.so=.a) $(ROOTFS_TARGET:.so=.a)
+	@echo " * $(TARGET:.so=.a) -> $(BUILDFS_TARGET:.so=.a)"
+	@$(INSTALL) $(TARGET:.so=.a) $(BUILDFS_TARGET:.so=.a)
 endif
 ifneq ($(POST_INSTALL_SCRIPT),)
 	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT) $@
@@ -384,7 +388,7 @@ endif
 
 ifneq ($(HEADERS_TO_INSTALL),)
 $(HEADERS_INSTALL_DIR)/$(HEADERS_TO_INSTALL) $(INSTALL_HEADER)
-	@echo "Installing headers to your dev filesystem:"
+	@echo "Installing headers to your build filesystem:"
 	@for h in $^ ; do						\
 		bh=$$(basename $$h);					\
 		test "$$h" = "$(HEADERS_INSTALL_DIR)/$$bh" && continue;	\
@@ -413,7 +417,7 @@ $(DEVTMPDIR):
 	@mkdir -p $@
 
 dev-pkg: clean $(DEVTMPDIR) all
-	@ROOTFS=$(DEVTMPDIR) make install-dev-pkg
+	@BUILDFS=$(DEVTMPDIR) make install-dev-pkg
 	@if rmdir $(DEVTMPDIR) &>/dev/null ;then echo "Nothing to pack" && exit 1; fi
 	cd $(DEVTMPDIR) && tar czvf $(DEVPKG) *
 ifeq ($(USESUDO),y)
