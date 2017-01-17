@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.9.9-beta (January 16th, 2017)
+# Version 0.9.9-beta2 (January 16th, 2017)
 #
 # "One to build them all!"
 #
@@ -160,9 +160,11 @@ POST_INSTALL_SCRIPT_CMD=BUILDFS=$(BUILDFS) INSTALL_ROOT=$(INSTALL_ROOT) INSTALL_
 
 ifeq ($(USESUDO),y)
 INSTALL=sudo install -D
+SUDORM=sudo rm
 RUN_POST_INSTALL_SCRIPT=sudo $(POST_INSTALL_SCRIPT_CMD)
 else
 INSTALL=install -D
+SUDORM=rm
 RUN_POST_INSTALL_SCRIPT=$(POST_INSTALL_SCRIPT_CMD)
 endif
 
@@ -404,11 +406,7 @@ pkg: clean $(TMPDIR) all
 	@INSTALL_ROOT=$(TMPDIR) make install-pkg
 	@if rmdir $(TMPDIR) &>/dev/null ;then echo "Nothing to pack" && exit 1; fi
 	cd $(TMPDIR) && tar czvf $(PKG) *
-ifeq ($(USESUDO),y)
-	@sudo rm -rf $(TMPDIR)
-else
-	@rm -rf $(TMPDIR)
-endif
+	@$(SUDORM) -rf $(TMPDIR)
 	@echo ""
 	@echo "Package $(PKG) built"
 	@echo ""
@@ -420,11 +418,7 @@ dev-pkg: clean $(DEVTMPDIR) all
 	@BUILDFS=$(DEVTMPDIR) make install-dev-pkg
 	@if rmdir $(DEVTMPDIR) &>/dev/null ;then echo "Nothing to pack" && exit 1; fi
 	cd $(DEVTMPDIR) && tar czvf $(DEVPKG) *
-ifeq ($(USESUDO),y)
-	@sudo rm -rf $(DEVTMPDIR)
-else
-	@rm -rf $(DEVTMPDIR)
-endif
+	@$(SUDORM) -rf $(DEVTMPDIR)
 	@echo ""
 	@echo "Package $(DEVPKG) built"
 	@echo ""
@@ -434,11 +428,9 @@ endif
 clean:
 	@rm -f *.d *.dd? *.o
 	@rm -vf $(TARGET) tags $(VISHEADER)
-ifeq ($(USESUDO),y)
-	@sudo rm -vrf $(TMPDIR) $(PKG) $(DEVTMPDIR) $(DEVPKG)
-else
-	@rm -vrf $(TMPDIR) $(PKG) $(DEVTMPDIR) $(DEVPKG)
-endif
+	@for i in $(TMPDIR) $(PKG) $(DEVTMPDIR) $(DEVPKG) ; do	\
+		if [ -d "$i" ];then $(SUDORM) -vrf $i ; fi ;	\
+	done
 ifeq ($(TARGETTYPE),lib)
 	@rm -vf $(TARGET:.so=.a)
 endif
