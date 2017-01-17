@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.9.8-rc8 (November 22th, 2016)
+# Version 0.9.9-beta (January 16th, 2017)
 #
 # "One to build them all!"
 #
@@ -14,7 +14,10 @@
 # - support for building shared and static libraries
 # - support for customize 'visibility' in libraries
 # - special 'install' target to install binaries and header files
-# - special 'pkg' target to create a .tar.gz packet
+# - special 'pkg' target to create a <target>.tar.gz packet with
+#   your executable file or shared library
+# - special 'dev-pkg' target to create a <target>-dev.tar.gz packet with
+#   your libraries and header files
 #
 #
 # This program is free software: you can redistribute it and/or modify
@@ -117,7 +120,9 @@ ROOTFS?=/
 
 TMPDIR=$(shell pwd -P)/._tmp
 PKG=$(shell pwd -P)/$(TARGETNAME).tar.gz
-install-pkg: INSTALL_ROOT=$(TMPDIR)
+
+DEVTMPDIR=$(shell pwd -P)/._devtmp
+DEVPKG=$(shell pwd -P)/$(TARGETNAME)-dev.tar.gz
 
 INSTALL_ROOT?=$(ROOTFS)
 
@@ -160,8 +165,7 @@ endif
 CFLAGS?=-Wall -Wextra -Wno-unused-parameter -fPIC # -Wno-missing-field-initializers
 CXXFLAGS?=$(CFLAGS)
 
-LDFLAGS:=-L$(INSTALL_ROOT)/$(INSTALL_PREFIX)/$(LIBSUBDIR)	\
-	 -L$(ROOTFS)/$(INSTALL_PREFIX)/$(LIBSUBDIR) 		\
+LDFLAGS:=-L$(ROOTFS)/$(INSTALL_PREFIX)/$(LIBSUBDIR) 		\
 	 -L$(ROOTFS)/usr/$(LIBSUBDIR) $(LDFLAGS)
 
 # You might want to customize this...
@@ -215,8 +219,7 @@ INCFLAGS+=$(shell for i in $(EXTRA_DIRS) ; do echo "-I$${i} " ; done)
 
 # Please note that the order of "-I" directives is important. My choice is to
 # first look for headers in the sources, and than in the system directories.
-INCFLAGS:=-I. $(INCFLAGS) -I$(INSTALL_ROOT)/$(INSTALL_PREFIX)/include	\
-		-I$(ROOTFS)/$(INSTALL_PREFIX)/include -I$(ROOTFS)/usr/include
+INCFLAGS:=-I. $(INCFLAGS) -I$(ROOTFS)/$(INSTALL_PREFIX)/include -I$(ROOTFS)/usr/include
 
 CFLAGS+=$(INCFLAGS)
 CXXFLAGS+=$(INCFLAGS)
@@ -258,7 +261,7 @@ ifneq ($(INSTALL_HEADER),)
 	# Note that here I use := instead of = because I want CFLAGS to expand
 	# immediately (before including $(VISHEADER))
 	HEADERS_TO_INSTALL:=$(shell PATH=$(PATH) $(CPP) $(CFLAGS) $(CXXFLAGS) -MM $(INSTALL_HEADER) | sed 's,\($*\)\.o[ :]*,\1.h: ,g' | sed 's,\\,,g')
-	HEADERS_INSTALL_DIR=$(INSTALL_ROOT)/$(INSTALL_PREFIX)/include
+	HEADERS_INSTALL_DIR=$(ROOTFS)/$(INSTALL_PREFIX)/include
 endif
 
 ifeq ($(OPTIMIZE_LIB_VISIBILITY),y)
@@ -271,6 +274,7 @@ else
 endif
 
 INSTALL_TARGET=$(INSTALL_ROOT)/$(INSTALL_PREFIX)/$(INSTALL_DIR)/$(shell basename $(TARGET))
+ROOTFS_TARGET=$(ROOTFS)/$(INSTALL_PREFIX)/$(INSTALL_DIR)/$(shell basename $(TARGET))
 
 CTAGS=$(shell which ctags 2>/dev/null)
 
@@ -347,21 +351,40 @@ endif
 tags: $(SRC) $(HEADERS)
 	@$(CTAGS) $^
 
-install-pkg install: $(INSTALLTARGETS)
-	@echo "Installing binaries:"
+install: $(INSTALLTARGETS) install-pkg install-dev-pkg
+ifneq ($(POST_INSTALL_SCRIPT),)
+	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT) $@
+endif
+
+install-pkg: $(INSTALLTARGETS)
+ifneq ($(TARGETTYPE),staticlib)
+	@echo "Installing binaries to your root filesystem:"
 	@echo " * $(TARGET) -> $(INSTALL_TARGET)"
 	@$(INSTALL) $(TARGET) $(INSTALL_TARGET)
-ifeq ($(TARGETTYPE),lib)
-	@echo " * $(TARGET:.so=.a) -> $(INSTALL_TARGET:.so=.a)"
-	@$(INSTALL) $(TARGET:.so=.a) $(INSTALL_TARGET:.so=.a)
 endif
 ifneq ($(POST_INSTALL_SCRIPT),)
-	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT)
+	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT) $@
+endif
+
+install-dev-pkg: $(INSTALLTARGETS)
+ifneq ($(findstring lib,$(TARGETTYPE)),)
+ifneq ($(INSTALL_ROOT),$(ROOTFS))
+	@echo "Installing binaries to your dev filesystem:"
+	@echo " * $(TARGET) -> $(ROOTFS_TARGET)"
+	@$(INSTALL) $(TARGET) $(ROOTFS_TARGET)
+endif
+ifeq ($(TARGETTYPE),lib)
+	@echo " * $(TARGET:.so=.a) -> $(ROOTFS_TARGET:.so=.a)"
+	@$(INSTALL) $(TARGET:.so=.a) $(ROOTFS_TARGET:.so=.a)
+endif
+ifneq ($(POST_INSTALL_SCRIPT),)
+	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT) $@
+endif
 endif
 
 ifneq ($(HEADERS_TO_INSTALL),)
 $(HEADERS_INSTALL_DIR)/$(HEADERS_TO_INSTALL) $(INSTALL_HEADER)
-	@echo "Installing headers:"
+	@echo "Installing headers to your dev filesystem:"
 	@for h in $^ ; do						\
 		bh=$$(basename $$h);					\
 		test "$$h" = "$(HEADERS_INSTALL_DIR)/$$bh" && continue;	\
@@ -375,6 +398,7 @@ $(TMPDIR):
 
 pkg: clean $(TMPDIR) all
 	@INSTALL_ROOT=$(TMPDIR) make install-pkg
+	@if rmdir $(TMPDIR) &>/dev/null ;then echo "Nothing to pack" && exit 1; fi
 	cd $(TMPDIR) && tar czvf $(PKG) *
 ifeq ($(USESUDO),y)
 	@sudo rm -rf $(TMPDIR)
@@ -385,12 +409,32 @@ endif
 	@echo "Package $(PKG) built"
 	@echo ""
 
-.PHONY: all clean install install-pkg pkg
+$(DEVTMPDIR):
+	@mkdir -p $@
+
+dev-pkg: clean $(DEVTMPDIR) all
+	@ROOTFS=$(DEVTMPDIR) make install-dev-pkg
+	@if rmdir $(DEVTMPDIR) &>/dev/null ;then echo "Nothing to pack" && exit 1; fi
+	cd $(DEVTMPDIR) && tar czvf $(DEVPKG) *
+ifeq ($(USESUDO),y)
+	@sudo rm -rf $(DEVTMPDIR)
+else
+	@rm -rf $(DEVTMPDIR)
+endif
+	@echo ""
+	@echo "Package $(DEVPKG) built"
+	@echo ""
+
+.PHONY: all clean install install-pkg pkg install-dev-pkg dev-pkg
 
 clean:
 	@rm -f *.d *.dd? *.o
 	@rm -vf $(TARGET) tags $(VISHEADER)
-	@rm -vrf $(TMPDIR) $(PKG)
+ifeq ($(USESUDO),y)
+	@sudo rm -vrf $(TMPDIR) $(PKG) $(DEVTMPDIR) $(DEVPKG)
+else
+	@rm -vrf $(TMPDIR) $(PKG) $(DEVTMPDIR) $(DEVPKG)
+endif
 ifeq ($(TARGETTYPE),lib)
 	@rm -vf $(TARGET:.so=.a)
 endif
