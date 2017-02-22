@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.9.9-beta2 (January 16th, 2017)
+# Version 0.9.9-beta3 (February 22th, 2017)
 #
 # "One to build them all!"
 #
@@ -150,10 +150,10 @@ CPP=$(CROSS_COMPILE)cpp
 AR=$(CROSS_COMPILE)ar
 
 TMPDIR=$(shell pwd -P)/._tmp
-PKG=$(shell pwd -P)/$(TARGETNAME).tar.gz
+PKG?=$(shell pwd -P)/$(TARGETNAME).tar.gz
 
 DEVTMPDIR=$(shell pwd -P)/._devtmp
-DEVPKG=$(shell pwd -P)/$(TARGETNAME)-dev.tar.gz
+DEVPKG?=$(shell pwd -P)/$(TARGETNAME)-dev.tar.gz
 
 POST_INSTALL_SCRIPT=./post_install.sh
 POST_INSTALL_SCRIPT_CMD=BUILDFS=$(BUILDFS) INSTALL_ROOT=$(INSTALL_ROOT) INSTALL_PREFIX=$(INSTALL_PREFIX) TARGETNAME=$(TARGETNAME) $(POST_INSTALL_SCRIPT)
