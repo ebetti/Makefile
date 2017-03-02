@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.9.9-beta4 (March 2nd, 2017)
+# Version 0.9.9-beta5 (March 2nd, 2017)
 #
 # "One to build them all!"
 #
@@ -183,8 +183,8 @@ EXTRA_CFLAGS?=
 CFLAGS?=$(EXTRA_CFLAGS) -Wall -Wextra -Wno-unused-parameter -fPIC # -Wno-missing-field-initializers
 CXXFLAGS?=$(EXTRA_CFLAGS) -Wall -Wextra -Wno-unused-parameter -fPIC # -Wno-missing-field-initializers
 
-LDFLAGS:=-L$(BUILDFS)/$(INSTALL_PREFIX)/$(LIBSUBDIR) 		\
-	 -L$(BUILDFS)/usr/$(LIBSUBDIR) $(LDFLAGS)
+LDFLAGS:=$(LDFLAGS) -L$(BUILDFS)/$(INSTALL_PREFIX)/$(LIBSUBDIR) 	\
+		    -L$(BUILDFS)/usr/$(LIBSUBDIR) 
 
 # You might want to customize this...
 ifeq ($(DEBUG),y)
@@ -242,7 +242,7 @@ INCFLAGS:=-I. $(INCFLAGS) -I$(BUILDFS)/$(INSTALL_PREFIX)/include -I$(BUILDFS)/us
 CFLAGS+=$(INCFLAGS)
 CXXFLAGS+=$(INCFLAGS)
 
-LINK=$(CC) $(LDFLAGS)
+LINK=$(CC)
 
 TARGET=$(TARGETNAME)
 
@@ -322,7 +322,7 @@ all: $(ALLTARGETS) $(CTAGSTARGET)
 
 ifneq ($(TARGETTYPE),staticlib)
 $(TARGET): $(OBJ)
-	$(LINK) $(OBJ) $(STATICLIBS) -o $@
+	$(LINK) $(OBJ) $(STATICLIBS) $(LDFLAGS) -o $@
 endif
 
 clean: NODEP=y
