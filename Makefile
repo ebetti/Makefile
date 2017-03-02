@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.9.9-beta3 (February 22th, 2017)
+# Version 0.9.9-beta4 (March 2nd, 2017)
 #
 # "One to build them all!"
 #
@@ -41,7 +41,18 @@
 # exclusive):
 # - edit this file
 # - create a config.mk file that overrides what you want to personalize
+# In the latter case you can have multiple config files and switch between
+# them defining an enviroment variable. For example:
+# 	BUILDALT=myalt1 make # to build using config-myalt1.mk
+# 	BUILDALT=myalt2 make # to build using config-myalt2.mk
+# 	make # to build using config.mk
+# Note that, while one might not have a config.mk, when the BUILDALT variable
+# is defined the file config-$(BUILDALT).mk must exist
+ifneq ($(BUILDALT),)
+include config-$(BUILDALT).mk
+else
 -include config.mk
+endif
 
 # Please set your own target name.
 # Note that when building libraries the final library name will be:
