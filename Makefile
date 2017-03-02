@@ -179,8 +179,9 @@ SUDORM=rm
 RUN_POST_INSTALL_SCRIPT=$(POST_INSTALL_SCRIPT_CMD)
 endif
 
-CFLAGS?=-Wall -Wextra -Wno-unused-parameter -fPIC # -Wno-missing-field-initializers
-CXXFLAGS?=$(CFLAGS)
+EXTRA_CFLAGS?=
+CFLAGS?=$(EXTRA_CFLAGS) -Wall -Wextra -Wno-unused-parameter -fPIC # -Wno-missing-field-initializers
+CXXFLAGS?=$(EXTRA_CFLAGS) -Wall -Wextra -Wno-unused-parameter -fPIC # -Wno-missing-field-initializers
 
 LDFLAGS:=-L$(BUILDFS)/$(INSTALL_PREFIX)/$(LIBSUBDIR) 		\
 	 -L$(BUILDFS)/usr/$(LIBSUBDIR) $(LDFLAGS)
