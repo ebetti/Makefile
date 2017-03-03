@@ -80,7 +80,7 @@ USESUDO?=y
 # By default, files from all subdirectories are built.
 # If you want to build only few directories, just list them in the variable.
 # Not to include any directory, leave the variable empty
-EXTRA_DIRS?=$(shell find * -follow -type d)
+EXTRA_DIRS?=$(shell find -L * -type d)
 
 # Add here extra include directories (EXTRA_DIRS are automatically added)
 #INCFLAGS=-I../your_include_directory
