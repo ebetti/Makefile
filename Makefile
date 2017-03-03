@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.9.9-beta5 (March 2nd, 2017)
+# Version 0.10-beta0 (March 3rd, 2017)
 #
 # "One to build them all!"
 #
@@ -104,6 +104,9 @@ LDFLAGS?=
 # For more info: http://stackoverflow.com/questions/45135/why-does-the-order-in-which-libraries-are-linked-sometimes-cause-errors-in-gcc
 STATICLIBS?=
 
+# Change the build output directory (default is .)
+BUILD_OUTPUT?=
+
 ##############################################################################
 ############################## Advanced tweaks ###############################
 ##############################################################################
@@ -159,12 +162,6 @@ CC=$(CROSS_COMPILE)gcc
 CXX=$(CROSS_COMPILE)g++
 CPP=$(CROSS_COMPILE)cpp
 AR=$(CROSS_COMPILE)ar
-
-TMPDIR=$(shell pwd -P)/._tmp
-PKG?=$(shell pwd -P)/$(TARGETNAME).tar.gz
-
-DEVTMPDIR=$(shell pwd -P)/._devtmp
-DEVPKG?=$(shell pwd -P)/$(TARGETNAME)-dev.tar.gz
 
 POST_INSTALL_SCRIPT=./post_install.sh
 POST_INSTALL_SCRIPT_CMD=BUILDFS=$(BUILDFS) INSTALL_ROOT=$(INSTALL_ROOT) INSTALL_PREFIX=$(INSTALL_PREFIX) TARGETNAME=$(TARGETNAME) $(POST_INSTALL_SCRIPT)
@@ -228,8 +225,23 @@ DEP:=$(COBJ:.o=.d)
 DEP+=$(CPPSRC1:.cpp=.dd1)
 DEP+=$(CPPSRC2:.cc=.dd2)
 DEP+=$(CPPSRC3:.C=.dd3)
+ifneq ($(BUILD_OUTPUT),)
+_CREATE_BUILD_OUTPUT:=$(shell mkdir -p $(BUILD_OUTPUT))
+_CREATE_BUILD_OUTPUT:=$(shell for i in $(EXTRA_DIRS) ; do mkdir -p $(BUILD_OUTPUT)/$${i} ; done)
+# From now on, making sure there is a slash at the end
+BUILD_OUTPUT:=$(BUILD_OUTPUT:%/=%)/
+OBJ:=$(OBJ:%=$(BUILD_OUTPUT)%)
+DEP:=$(DEP:%=$(BUILD_OUTPUT)%)
+endif
 HEADERS=$(shell ls *.h *.hpp 2> /dev/null)
 HEADERS+=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.h $${i}/*.hpp  2>/dev/null ; done)
+
+TMPDIR=$(BUILD_OUTPUT)._tmp
+PKG?=$(BUILD_OUTPUT)$(TARGETNAME).tar.gz
+PKG:=$(shell readlink -mn $(PKG))
+DEVTMPDIR=$(BUILD_OUTPUT)._devtmp
+DEVPKG?=$(BUILD_OUTPUT)$(TARGETNAME)-dev.tar.gz
+DEVPKG:=$(shell readlink -mn $(DEVPKG))
 
 .SECONDARY: $(DEP) $(OBJ)
 
@@ -283,7 +295,7 @@ ifneq ($(INSTALL_HEADER),)
 endif
 
 ifeq ($(OPTIMIZE_LIB_VISIBILITY),y)
-	VISHEADER=.__vis.h
+	VISHEADER=$(BUILD_OUTPUT)__vis.h
 	HEADERS+=$(VISHEADER)
 	CFLAGS+=-fvisibility=hidden -include $(VISHEADER)
 	CXXFLAGS+=-fvisibility=hidden -include $(VISHEADER)
@@ -297,10 +309,12 @@ BUILDFS_TARGET=$(BUILDFS)/$(INSTALL_PREFIX)/$(INSTALL_DIR)/$(shell basename $(TA
 CTAGS=$(shell which ctags 2>/dev/null)
 
 ifneq ($(CTAGS),)
-	CTAGSTARGET=tags
+	CTAGSTARGET=$(BUILD_OUTPUT)tags
 else
 	CTAGSTARGET=
 endif
+
+TARGET:=$(BUILD_OUTPUT)$(TARGET)
 
 ifeq ($(TARGETTYPE),lib)
 	ALLTARGETS=$(TARGET) $(TARGET:.so=.a)
@@ -317,8 +331,13 @@ endif
 
 all: $(ALLTARGETS) $(CTAGSTARGET)
 
-%.a: $(OBJ)
+$(BUILD_OUTPUT)%.a: $(OBJ)
 	$(AR) -rcs $@ $(OBJ)
+
+ifneq ($(BUILD_OUTPUT),)
+$(BUILD_OUTPUT)%.o: %.o
+	@mv $^ $@
+endif
 
 ifneq ($(TARGETTYPE),staticlib)
 $(TARGET): $(OBJ)
@@ -326,6 +345,8 @@ $(TARGET): $(OBJ)
 endif
 
 clean: NODEP=y
+clean-ouput-dir: NODEP=y
+clean-files: NODEP=y
 
 ifneq ($(NODEP),y)
 -include $(DEP)
@@ -335,22 +356,22 @@ endif
 # http://www.makelinux.net/make3/make3-CHP-2-SECT-7
 # Note: use -MM instead of -M if you do not want to include system headers in
 #       the dependencies
-%.d: %.c $(VISHEADER)
+$(BUILD_OUTPUT)%.d: %.c $(VISHEADER)
 	@$(CC) $(CFLAGS) -MM $< > $@.$$$$;			\
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
 	rm -f $@.$$$$
 
-%.dd1: %.cpp $(VISHEADER)
+$(BUILD_OUTPUT)%.dd1: %.cpp $(VISHEADER)
 	@$(CXX) $(CXXFLAGS) -MM $< > $@.$$$$;			\
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
 	rm -f $@.$$$$
 
-%.dd2: %.cc $(VISHEADER)
+$(BUILD_OUTPUT)%.dd2: %.cc $(VISHEADER)
 	@$(CXX) $(CXXFLAGS) -MM $< > $@.$$$$;			\
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
 	rm -f $@.$$$$
 
-%.dd3: %.C $(VISHEADER)
+$(BUILD_OUTPUT)%.dd3: %.C $(VISHEADER)
 	@$(CXX) $(CXXFLAGS) -MM $< > $@.$$$$;			\
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
 	rm -f $@.$$$$
@@ -366,8 +387,8 @@ $(VISHEADER):
 	@echo '#endif'					>> $(VISHEADER)
 endif
 
-tags: $(SRC) $(HEADERS)
-	@$(CTAGS) $^
+$(BUILD_OUTPUT)tags: $(SRC) $(HEADERS)
+	@$(CTAGS) -f $@ $^
 
 install: $(INSTALLTARGETS) install-pkg install-dev-pkg
 ifneq ($(POST_INSTALL_SCRIPT),)
@@ -414,7 +435,7 @@ endif
 $(TMPDIR):
 	@mkdir -p $@
 
-pkg: clean $(TMPDIR) all
+pkg: clean-files $(TMPDIR) all
 	@INSTALL_ROOT=$(TMPDIR) make install-pkg
 	@if rmdir $(TMPDIR) &>/dev/null ;then echo "Nothing to pack" && exit 1; fi
 	cd $(TMPDIR) && tar czvf $(PKG) *
@@ -426,7 +447,7 @@ pkg: clean $(TMPDIR) all
 $(DEVTMPDIR):
 	@mkdir -p $@
 
-dev-pkg: clean $(DEVTMPDIR) all
+dev-pkg: clean-files $(DEVTMPDIR) all
 	@BUILDFS=$(DEVTMPDIR) make install-dev-pkg
 	@if rmdir $(DEVTMPDIR) &>/dev/null ;then echo "Nothing to pack" && exit 1; fi
 	cd $(DEVTMPDIR) && tar czvf $(DEVPKG) *
@@ -435,19 +456,25 @@ dev-pkg: clean $(DEVTMPDIR) all
 	@echo "Package $(DEVPKG) built"
 	@echo ""
 
-.PHONY: all clean install install-pkg pkg install-dev-pkg dev-pkg
+.PHONY: all clean clean-output-dir clean-files install install-pkg pkg install-dev-pkg dev-pkg
 
-clean:
-	@rm -f *.d *.dd? *.o
-	@rm -vf $(TARGET) tags $(VISHEADER)
-	@for i in $(TMPDIR) $(PKG) $(DEVTMPDIR) $(DEVPKG) ; do	\
-		if [ -d "$i" ];then $(SUDORM) -vrf $i ; fi ;	\
+clean-files:
+	rm -f $(BUILD_OUTPUT)*.d $(BUILD_OUTPUT)*.dd? $(BUILD_OUTPUT)*.o
+	for i in $(EXTRA_DIRS) ; do					\
+		rm -f $(BUILD_OUTPUT)$${i}/*.d	;			\
+		rm -f $(BUILD_OUTPUT)$${i}/*.dd?;			\
+		rm -f $(BUILD_OUTPUT)$${i}/*.o	; 			\
 	done
+	rm -f $(TARGET) $(BUILD_OUTPUT)tags $(VISHEADER)
+	rm -f $(PKG) $(DEVPKG)
+	$(SUDORM) -rf $(TMPDIR) $(DEVTMPDIR)
 ifeq ($(TARGETTYPE),lib)
-	@rm -vf $(TARGET:.so=.a)
+	rm -f $(TARGET:.so=.a)
 endif
-	@for i in $(EXTRA_DIRS) ; do		\
-		rm -f $${i}/*.d $${i}/*.dd? ;	\
-		rm -f $${i}/*.o ; 		\
-	done
+
+clean clean-output-dir: clean-files
+ifneq ($(BUILD_OUTPUT),)
+	for i in $$(find $(BUILD_OUTPUT)* -type d | sort -r) ; do\
+		rmdir $${i} ; done
+endif
 
