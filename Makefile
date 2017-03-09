@@ -463,23 +463,23 @@ dev-pkg: clean-files $(DEVTMPDIR) all
 
 clean-files:
 	rm -f $(BUILD_OUTPUT)*.d $(BUILD_OUTPUT)*.dd? $(BUILD_OUTPUT)*.o
-	for i in $(EXTRA_DIRS) ; do					\
-		rm -f $(BUILD_OUTPUT)$${i}/*.d	;			\
-		rm -f $(BUILD_OUTPUT)$${i}/*.dd?;			\
-		rm -f $(BUILD_OUTPUT)$${i}/*.o	; 			\
+	for i in $(EXTRA_DIRS) ; do				\
+		rm -f $(BUILD_OUTPUT)$${i}/*.d ; 		\
+		rm -f $(BUILD_OUTPUT)$${i}/*.dd? ;		\
+		rm -f $(BUILD_OUTPUT)$${i}/*.o ; 		\
 	done
 	rm -f $(TARGET) $(BUILD_OUTPUT)tags $(VISHEADER)
 ifeq ($(TARGETTYPE),lib)
 	rm -f $(TARGET:.so=.a)
 endif
 	rm -f $(PKG) $(DEVPKG)
-	if [ -d $(TMPDIR) ] || [ -d $(DEVTMPDIR) ];then			\
-		$(SUDORM) -rf $(TMPDIR) $(DEVTMPDIR) ;			\
+	if [ -d $(TMPDIR) ] || [ -d $(DEVTMPDIR) ]; then	\
+		$(SUDORM) -rf $(TMPDIR) $(DEVTMPDIR) ;		\
 	fi
 
 clean clean-output-dir: clean-files
 ifneq ($(BUILD_OUTPUT),)
-	for i in $$(find $(BUILD_OUTPUT) -mindepth 1 -type d | sort -r) ; do\
+	for i in $$(find $(BUILD_OUTPUT) -mindepth 1 -type d | sort -r); do \
 		rmdir $${i} ; done
 endif
 
