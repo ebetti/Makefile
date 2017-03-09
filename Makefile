@@ -80,6 +80,9 @@ USESUDO?=y
 # By default, files from all subdirectories are built.
 # If you want to build only few directories, just list them in the variable.
 # Not to include any directory, leave the variable empty
+# FIXME: I need to work more on this, but to auto exclude output directories
+# one can do something like this:
+# EXTRA_DIRS?=$(shell find -L * -type d -a \( -path $(BUILD_OUTPUT) -prune -o -print \))
 EXTRA_DIRS?=$(shell find -L * -type d)
 
 # Add here extra include directories (EXTRA_DIRS are automatically added)
