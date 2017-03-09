@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.10-beta0 (March 3rd, 2017)
+# Version 0.10-beta1 (March 9th, 2017)
 #
 # "One to build them all!"
 #
@@ -466,15 +466,17 @@ clean-files:
 		rm -f $(BUILD_OUTPUT)$${i}/*.o	; 			\
 	done
 	rm -f $(TARGET) $(BUILD_OUTPUT)tags $(VISHEADER)
-	rm -f $(PKG) $(DEVPKG)
-	$(SUDORM) -rf $(TMPDIR) $(DEVTMPDIR)
 ifeq ($(TARGETTYPE),lib)
 	rm -f $(TARGET:.so=.a)
 endif
+	rm -f $(PKG) $(DEVPKG)
+	if [ -d $(TMPDIR) ] || [ -d $(DEVTMPDIR) ];then			\
+		$(SUDORM) -rf $(TMPDIR) $(DEVTMPDIR) ;			\
+	fi
 
 clean clean-output-dir: clean-files
 ifneq ($(BUILD_OUTPUT),)
-	for i in $$(find $(BUILD_OUTPUT)* -type d | sort -r) ; do\
+	for i in $$(find $(BUILD_OUTPUT)* -ignore_readdir_race -type d | sort -r) ; do\
 		rmdir $${i} ; done
 endif
 
