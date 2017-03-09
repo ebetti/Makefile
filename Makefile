@@ -479,7 +479,7 @@ endif
 
 clean clean-output-dir: clean-files
 ifneq ($(BUILD_OUTPUT),)
-	for i in $$(find $(BUILD_OUTPUT)* -ignore_readdir_race -type d | sort -r) ; do\
+	for i in $$(find $(BUILD_OUTPUT) -mindepth 1 -type d | sort -r) ; do\
 		rmdir $${i} ; done
 endif
 
