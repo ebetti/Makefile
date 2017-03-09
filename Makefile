@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.10-beta1 (March 9th, 2017)
+# Version 0.10-beta2 (March 9th, 2017)
 #
 # "One to build them all!"
 #
@@ -61,7 +61,7 @@ endif
 TARGETNAME?=a.out
 
 # Target type can be:
-# - 'exec' (or blank - it's the default) for dynamic executable
+# - 'exec' for dynamic executable
 # - 'staticexec' for static executable
 # - 'lib' to build as library (both shared and static)
 # - 'sharedlib' for shared library
@@ -76,14 +76,8 @@ DEBUG?=n
 # 'n' -> if you want to type 'sudo' yourself whenever you think you need to.
 USESUDO?=y
 
-# Build also sources from all the directories listed in EXTRA_DIRS
-# By default, files from all subdirectories are built.
-# If you want to build only few directories, just list them in the variable.
-# Not to include any directory, leave the variable empty
-# FIXME: I need to work more on this, but to auto exclude output directories
-# one can do something like this:
-# EXTRA_DIRS?=$(shell find -L * -type d -a \( -path $(BUILD_OUTPUT) -prune -o -print \))
-EXTRA_DIRS?=$(shell find -L * -type d)
+# Change the build output directory (default is .)
+BUILD_OUTPUT?=
 
 # Add here extra include directories (EXTRA_DIRS are automatically added)
 #INCFLAGS=-I../your_include_directory
@@ -107,9 +101,6 @@ LDFLAGS?=
 # For more info: http://stackoverflow.com/questions/45135/why-does-the-order-in-which-libraries-are-linked-sometimes-cause-errors-in-gcc
 STATICLIBS?=
 
-# Change the build output directory (default is .)
-BUILD_OUTPUT?=
-
 ##############################################################################
 ############################## Advanced tweaks ###############################
 ##############################################################################
@@ -123,6 +114,16 @@ ENV_SCRIPT?=
 ifneq ($(ENV_SCRIPT),)
 IGNOREME := $(shell bash -c "source $(ENV_SCRIPT); env | sed 's/=/:=/' | sed 's/^/export /' > /tmp/shellenvformake")
 include /tmp/shellenvformake
+endif
+
+# Build also sources from all the directories listed in EXTRA_DIRS
+# By default, files from all subdirectories are built.
+# If you want to build only few directories, just list them in the variable.
+# Not to include any directory, just leave the variable empty
+ifeq ($(BUILD_OUTPUT),)
+EXTRA_DIRS?=$(shell find -L . -mindepth 1 -type d -a \! -empty)
+else
+EXTRA_DIRS?=$(shell find -L . -mindepth 1 -type d -a \! -empty -a \( -samefile $(BUILD_OUTPUT) -prune -o -print \))
 endif
 
 # Uncomment (and eventually change the header file name)
