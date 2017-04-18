@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.10-beta2 (March 9th, 2017)
+# Version 0.10-beta3 (April 18th, 2017)
 #
 # "One to build them all!"
 #
@@ -14,10 +14,12 @@
 # - support for building shared and static libraries
 # - support for customize 'visibility' in libraries
 # - special 'install' target to install binaries and header files
-# - special 'pkg' target to create a <target>.tar.gz packet with
+# - special 'bin-pkg' target to create a <target>-bin.tar.gz packet with
 #   your executable file or shared library
 # - special 'dev-pkg' target to create a <target>-dev.tar.gz packet with
 #   your libraries and header files
+# - special 'pkg' target to create a <target>.tar.gz packet with both
+#   'bin' and 'dev' files
 #
 #
 # This program is free software: you can redistribute it and/or modify
@@ -243,7 +245,8 @@ HEADERS+=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.h $${i}/*.hpp  2>/dev/nu
 TMPDIR=$(BUILD_OUTPUT)._tmp
 PKG?=$(BUILD_OUTPUT)$(TARGETNAME).tar.gz
 PKG:=$(shell readlink -mn $(PKG))
-DEVTMPDIR=$(BUILD_OUTPUT)._devtmp
+BINPKG?=$(BUILD_OUTPUT)$(TARGETNAME)-bin.tar.gz
+BINPKG:=$(shell readlink -mn $(BINPKG))
 DEVPKG?=$(BUILD_OUTPUT)$(TARGETNAME)-dev.tar.gz
 DEVPKG:=$(shell readlink -mn $(DEVPKG))
 
@@ -329,7 +332,7 @@ endif
 INSTALLTARGETS=$(ALLTARGETS)
 
 ifneq ($(INSTALL_HEADER),)
-	INSTALLTARGETS+=$(HEADERS_INSTALL_DIR)/$(shell basename $(INSTALL_HEADER))
+	TARGET_HEADERS:=$(HEADERS_INSTALL_DIR)/$(shell basename $(INSTALL_HEADER))
 endif
 
 
@@ -394,12 +397,12 @@ endif
 $(BUILD_OUTPUT)tags: $(SRC) $(HEADERS)
 	@$(CTAGS) -f $@ $^
 
-install: $(INSTALLTARGETS) install-pkg install-dev-pkg
+install: $(INSTALLTARGETS) install-bin-pkg install-dev-pkg
 ifneq ($(POST_INSTALL_SCRIPT),)
 	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT) $@
 endif
 
-install-pkg: $(INSTALLTARGETS)
+install-bin install-bin-pkg: $(INSTALLTARGETS)
 ifneq ($(TARGETTYPE),staticlib)
 	@echo "Installing binaries to your root filesystem:"
 	@echo " * $(TARGET) -> $(INSTALL_TARGET)"
@@ -409,7 +412,7 @@ ifneq ($(POST_INSTALL_SCRIPT),)
 	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT) $@
 endif
 
-install-dev-pkg: $(INSTALLTARGETS)
+install-dev install-dev-pkg: $(TARGET_HEADERS) $(INSTALLTARGETS)
 ifneq ($(findstring lib,$(TARGETTYPE)),)
 ifneq ($(INSTALL_ROOT),$(BUILDFS))
 	@echo "Installing binaries to your build filesystem:"
@@ -440,27 +443,28 @@ $(TMPDIR):
 	@mkdir -p $@
 
 pkg: clean-files $(TMPDIR) all
-	@INSTALL_ROOT=$(TMPDIR) make install-pkg
+	@INSTALL_ROOT=$(TMPDIR) make install-bin-pkg
+	@BUILDFS=$(TMPDIR) make install-dev-pkg
+	make $(PKG)
+
+bin-pkg: clean-files $(TMPDIR) all
+	@INSTALL_ROOT=$(TMPDIR) make install-bin-pkg
+	make $(BINPKG)
+
+dev-pkg: clean-files $(TMPDIR) all
+	@BUILDFS=$(TMPDIR) make install-dev-pkg
+	make $(DEVPKG)
+
+$(PKG) $(BINPKG) $(DEVPKG):
 	@if rmdir $(TMPDIR) &>/dev/null ;then echo "Nothing to pack" && exit 1; fi
-	cd $(TMPDIR) && tar czvf $(PKG) *
+	cd $(TMPDIR) && tar czvf $@ *
 	@$(SUDORM) -rf $(TMPDIR)
 	@echo ""
-	@echo "Package $(PKG) built"
+	@echo "Package $@ built"
 	@echo ""
 
-$(DEVTMPDIR):
-	@mkdir -p $@
-
-dev-pkg: clean-files $(DEVTMPDIR) all
-	@BUILDFS=$(DEVTMPDIR) make install-dev-pkg
-	@if rmdir $(DEVTMPDIR) &>/dev/null ;then echo "Nothing to pack" && exit 1; fi
-	cd $(DEVTMPDIR) && tar czvf $(DEVPKG) *
-	@$(SUDORM) -rf $(DEVTMPDIR)
-	@echo ""
-	@echo "Package $(DEVPKG) built"
-	@echo ""
-
-.PHONY: all clean clean-output-dir clean-files install install-pkg pkg install-dev-pkg dev-pkg
+.PHONY: all clean clean-output-dir clean-files clean-pkg install install-bin	\
+		install-bin-pkg bin-pkg install-dev install-dev-pkg dev-pkg pkg
 
 clean-files:
 	rm -f $(BUILD_OUTPUT)*.d $(BUILD_OUTPUT)*.dd? $(BUILD_OUTPUT)*.o
@@ -473,12 +477,14 @@ clean-files:
 ifeq ($(TARGETTYPE),lib)
 	rm -f $(TARGET:.so=.a)
 endif
-	rm -f $(PKG) $(DEVPKG)
-	if [ -d $(TMPDIR) ] || [ -d $(DEVTMPDIR) ]; then	\
-		$(SUDORM) -rf $(TMPDIR) $(DEVTMPDIR) ;		\
+	if [ -d $(TMPDIR) ]; then		\
+		$(SUDORM) -rf $(TMPDIR) ;	\
 	fi
 
-clean clean-output-dir: clean-files
+clean-pkg:
+	rm -f $(PKG) $(BINPKG) $(DEVPKG)
+
+clean clean-output-dir: clean-files clean-pkg
 ifneq ($(BUILD_OUTPUT),)
 	for i in $$(find $(BUILD_OUTPUT) -mindepth 1 -type d | sort -r); do \
 		rmdir $${i} ; done

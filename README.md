@@ -14,7 +14,12 @@ advanced features and almost no configuration.
 - support for building shared and static libraries
 - support to customize 'visibility' in libraries
 - special 'install' target to install binaries and header files
-- special 'pkg' target to create a .tar.gz packet
+- special 'bin-pkg' target to create a <target>-bin.tar.gz packet with
+  your executable file or shared library
+- special 'dev-pkg' target to create a <target>-dev.tar.gz packet with
+  your libraries and header files
+- special 'pkg' target to create a <target>.tar.gz packet with both
+  'bin' and 'dev' files
 
 ## Motivation
 
