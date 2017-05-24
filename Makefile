@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.10-beta3 (April 18th, 2017)
+# Version 0.10-beta4 (May 24th, 2017)
 #
 # "One to build them all!"
 #
@@ -107,6 +107,14 @@ STATICLIBS?=
 ############################## Advanced tweaks ###############################
 ##############################################################################
 
+# When building libraries set this variable to 'y' to manually select which
+# function will be available through the library. If you choose to do this,
+# remember to mark "__public" all the functions you want to export.
+# For example:
+#                 int __public mypublicfunc(void) { ... }
+#
+OPTIMIZE_LIB_VISIBILITY?=n
+
 # Use this feature if you need to load a script that changes the environment
 # for all the commands executed in this makefile
 # i.e.: to me it is useful when I'm cross compiling to add the cross tools
@@ -199,14 +207,6 @@ else
 	CFLAGS+= -O3 -DNDEBUG
 	CXXFLAGS+= -O3 -DNDEBUG
 endif
-
-# When building libraries set this variable to 'y' to manually select which
-# function will be available through the library. If you choose to do this,
-# remember to mark "__public" all the functions you want to export.
-# For example:
-#                 int __public mypublicfunc(void) { ... }
-#
-OPTIMIZE_LIB_VISIBILITY=n
 
 ##############################################################################
 ####### NOTE! You should not need to change anything below this line! ########
