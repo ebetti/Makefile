@@ -131,10 +131,12 @@ endif
 # If you want to build only few directories, just list them in the variable.
 # Not to include any directory, just leave the variable empty
 ifeq ($(BUILD_OUTPUT),)
-EXTRA_DIRS?=$(shell find -L . -mindepth 1 -path ./.git -prune -o \( -type d -a \! -empty \) -print)
+_EXTRA_DIRS?=$(shell find -L . -mindepth 1 -path ./.git -prune -o \( -type d -a \! -empty \) -print)
 else
-EXTRA_DIRS?=$(shell find -L . -mindepth 1 -path ./.git -prune -o \( -type d -a \! -empty -a \! -samefile $(BUILD_OUTPUT) \) -print )
+_EXTRA_DIRS?=$(shell find -L . -mindepth 1 -path ./.git -prune -o \( -type d -a \! -empty -a \! -samefile $(BUILD_OUTPUT) \) -print )
 endif
+
+EXTRA_DIRS:=$(shell for i in $(_EXTRA_DIRS) ; do if test ! -r $${i}/Makefile 2>/dev/null ; then echo $${i} ; fi ; done)
 
 # Uncomment (and eventually change the header file name)
 # to install an header file along with your target
