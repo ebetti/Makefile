@@ -137,6 +137,7 @@ _EXTRA_DIRS?=$(shell find -L . -mindepth 1 -path ./.git -prune -o \( -type d -a 
 endif
 
 EXTRA_DIRS:=$(shell for i in $(_EXTRA_DIRS) ; do if test ! -r $${i}/Makefile 2>/dev/null ; then echo $${i} ; fi ; done)
+SUB_PROJS:=$(shell for i in $(_EXTRA_DIRS) ; do if test -r $${i}/Makefile 2>/dev/null ; then echo $${i} ; fi ; done)
 
 # Uncomment (and eventually change the header file name)
 # to install an header file along with your target
@@ -338,7 +339,12 @@ ifneq ($(INSTALL_HEADER),)
 endif
 
 
-all: $(ALLTARGETS) $(CTAGSTARGET)
+all: $(ALLTARGETS) $(CTAGSTARGET) subprojs
+
+subprojs:
+	@for i in $(SUB_PROJS) ; do	\
+		make -C $${i} ;		\
+	done
 
 $(BUILD_OUTPUT)%.a: $(OBJ)
 	$(AR) -rcs $@ $(OBJ)
@@ -465,8 +471,9 @@ $(PKG) $(BINPKG) $(DEVPKG):
 	@echo "Package $@ built"
 	@echo ""
 
-.PHONY: all clean clean-output-dir clean-files clean-pkg install install-bin	\
-		install-bin-pkg bin-pkg install-dev install-dev-pkg dev-pkg pkg
+.PHONY: all clean clean-output-dir clean-files clean-pkg	\
+	install install-bin install-bin-pkg bin-pkg install-dev \
+	install-dev-pkg dev-pkg pkg subprojs
 
 clean-files:
 	rm -f $(BUILD_OUTPUT)*.d $(BUILD_OUTPUT)*.dd? $(BUILD_OUTPUT)*.o
