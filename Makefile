@@ -357,10 +357,7 @@ $(TARGET): $(OBJ)
 	$(LINK) $(OBJ) $(STATICLIBS) $(LDFLAGS) -o $@
 endif
 
-clean: NODEP=y
-clean-files: NODEP=y
-
-ifneq ($(NODEP),y)
+ifneq ($(MAKECMDGOALS:clean%=CLEAN),CLEAN)
 -include $(DEP)
 endif
 
