@@ -354,7 +354,6 @@ $(TARGET): $(OBJ)
 endif
 
 clean: NODEP=y
-clean-ouput-dir: NODEP=y
 clean-files: NODEP=y
 
 ifneq ($(NODEP),y)
@@ -465,8 +464,9 @@ $(PKG) $(BINPKG) $(DEVPKG):
 	@echo "Package $@ built"
 	@echo ""
 
-.PHONY: all clean clean-output-dir clean-files clean-pkg install install-bin	\
-		install-bin-pkg bin-pkg install-dev install-dev-pkg dev-pkg pkg
+.PHONY: all clean clean-files clean-pkg		\
+	install install-bin install-bin-pkg install-dev install-dev-pkg	\
+	bin-pkg dev-pkg pkg
 
 clean-files:
 	rm -f $(BUILD_OUTPUT)*.d $(BUILD_OUTPUT)*.dd? $(BUILD_OUTPUT)*.o
@@ -486,7 +486,7 @@ endif
 clean-pkg:
 	rm -f $(PKG) $(BINPKG) $(DEVPKG)
 
-clean clean-output-dir: clean-files clean-pkg
+clean: clean-files clean-pkg
 ifneq ($(BUILD_OUTPUT),)
 	for i in $$(find $(BUILD_OUTPUT) -mindepth 1 -type d | sort -r); do \
 		rmdir $${i} ; done
