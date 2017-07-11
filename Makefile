@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.11-beta0 (July 11th, 2017)
+# Version 0.11-beta1 (July 11th, 2017)
 #
 # "One to build them all!"
 #
@@ -485,26 +485,26 @@ clean-subtargets:
 	done
 
 clean-files: clean-subtargets
-	rm -f $(BUILD_OUTPUT)*.d $(BUILD_OUTPUT)*.dd? $(BUILD_OUTPUT)*.o
-	for i in $(EXTRA_DIRS) ; do				\
-		rm -f $(BUILD_OUTPUT)$${i}/*.d ; 		\
-		rm -f $(BUILD_OUTPUT)$${i}/*.dd? ;		\
-		rm -f $(BUILD_OUTPUT)$${i}/*.o ; 		\
+	@rm -vf $(BUILD_OUTPUT)*.d $(BUILD_OUTPUT)*.dd? $(BUILD_OUTPUT)*.o
+	@for i in $(EXTRA_DIRS) ; do				\
+		rm -vf $(BUILD_OUTPUT)$${i}/*.d ; 		\
+		rm -vf $(BUILD_OUTPUT)$${i}/*.dd? ;		\
+		rm -vf $(BUILD_OUTPUT)$${i}/*.o ; 		\
 	done
-	rm -f $(TARGET) $(BUILD_OUTPUT)tags $(VISHEADER)
+	@rm -vf $(TARGET) $(BUILD_OUTPUT)tags $(VISHEADER)
 ifeq ($(TARGETTYPE),lib)
-	rm -f $(TARGET:.so=.a)
+	@rm -vf $(TARGET:.so=.a)
 endif
-	if [ -d $(TMPDIR) ]; then		\
+	@if [ -d $(TMPDIR) ]; then		\
 		$(SUDORM) -rf $(TMPDIR) ;	\
 	fi
 
 clean-pkg:
-	rm -f $(PKG) $(BINPKG) $(DEVPKG)
+	@rm -vf $(PKG) $(BINPKG) $(DEVPKG)
 
 clean: clean-files clean-pkg
 ifneq ($(BUILD_OUTPUT),)
-	for i in $$(find $(BUILD_OUTPUT) -mindepth 1 -type d | sort -r); do \
-		rmdir $${i} ; done
+	@for i in $$(find $(BUILD_OUTPUT) -mindepth 1 -type d | sort -r); do \
+		rmdir -v $${i} ; done
 endif
 
