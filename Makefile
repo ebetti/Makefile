@@ -137,6 +137,7 @@ _EXTRA_DIRS?=$(shell find -L . -mindepth 1 -path ./.git -prune -o \( -type d -a 
 endif
 
 EXTRA_DIRS:=$(shell for i in $(_EXTRA_DIRS) ; do if test ! -r $${i}/Makefile 2>/dev/null ; then echo $${i} ; fi ; done)
+SUBTARGETS_DIRS:=$(shell for i in $(_EXTRA_DIRS) ; do if test -r $${i}/Makefile 2>/dev/null ; then echo $${i} ; fi ; done)
 
 # Uncomment (and eventually change the header file name)
 # to install an header file along with your target
@@ -244,7 +245,7 @@ endif
 HEADERS=$(shell ls *.h *.hpp 2> /dev/null)
 HEADERS+=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.h $${i}/*.hpp  2>/dev/null ; done)
 
-TMPDIR=$(BUILD_OUTPUT)._tmp
+TMPDIR=$(shell realpath -P $(BUILD_OUTPUT)._tmp)
 PKG?=$(BUILD_OUTPUT)$(TARGETNAME).tar.gz
 PKG:=$(shell readlink -mn $(PKG))
 BINPKG?=$(BUILD_OUTPUT)$(TARGETNAME)-bin.tar.gz
@@ -339,6 +340,9 @@ endif
 
 
 all: $(ALLTARGETS) $(CTAGSTARGET)
+	@for t in $(SUBTARGETS_DIRS) ; do	\
+		make -C $$t || break;		\
+	done
 
 $(BUILD_OUTPUT)%.a: $(OBJ)
 	$(AR) -rcs $@ $(OBJ)
@@ -401,6 +405,10 @@ $(BUILD_OUTPUT)tags: $(SRC) $(HEADERS)
 post-install-script:
 ifneq ($(POST_INSTALL_SCRIPT),)
 	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT) $@
+	@for t in $(SUBTARGETS_DIRS) ; do			\
+		INSTALL_ROOT=$(INSTALL_ROOT) BUILDFS=$(BUILDFS)	\
+			make -C $$t $@ || break ;		\
+	done
 endif
 
 install: $(INSTALLTARGETS) install-bin-pkg install-dev-pkg post-install-script
@@ -411,6 +419,10 @@ ifneq ($(TARGETTYPE),staticlib)
 	@echo " * $(TARGET) -> $(INSTALL_TARGET)"
 	@$(INSTALL) $(TARGET) $(INSTALL_TARGET)
 endif
+	@for t in $(SUBTARGETS_DIRS) ; do			\
+		INSTALL_ROOT=$(INSTALL_ROOT) BUILDFS=$(BUILDFS)	\
+			make -C $$t $@ || break ;		\
+	done
 
 install-dev install-dev-pkg: $(TARGET_HEADERS) $(INSTALLTARGETS)
 ifneq ($(findstring lib,$(TARGETTYPE)),)
@@ -424,6 +436,10 @@ ifeq ($(TARGETTYPE),lib)
 	@$(INSTALL) $(TARGET:.so=.a) $(BUILDFS_TARGET:.so=.a)
 endif
 endif
+	@for t in $(SUBTARGETS_DIRS) ; do			\
+		INSTALL_ROOT=$(INSTALL_ROOT) BUILDFS=$(BUILDFS)	\
+			make -C $$t $@ || break ;		\
+	done
 
 ifneq ($(HEADERS_TO_INSTALL),)
 $(HEADERS_INSTALL_DIR)/$(HEADERS_TO_INSTALL) $(INSTALL_HEADER)
@@ -462,11 +478,16 @@ $(PKG) $(BINPKG) $(DEVPKG): FORCE
 
 FORCE:
 
-.PHONY: all FORCE clean clean-files clean-pkg				\
+.PHONY: all FORCE clean clean-files clean-pkg clean-subtargets		\
 	install install-bin install-bin-pkg install-dev install-dev-pkg	\
 	post-install-script bin-pkg dev-pkg pkg
 
-clean-files:
+clean-subtargets:
+	@for t in $(SUBTARGETS_DIRS) ; do	\
+		make -C $$t clean;		\
+	done
+
+clean-files: clean-subtargets
 	rm -f $(BUILD_OUTPUT)*.d $(BUILD_OUTPUT)*.dd? $(BUILD_OUTPUT)*.o
 	for i in $(EXTRA_DIRS) ; do				\
 		rm -f $(BUILD_OUTPUT)$${i}/*.d ; 		\
