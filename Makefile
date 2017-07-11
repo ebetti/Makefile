@@ -398,19 +398,18 @@ endif
 $(BUILD_OUTPUT)tags: $(SRC) $(HEADERS)
 	@$(CTAGS) -f $@ $^
 
-install: $(INSTALLTARGETS) install-bin-pkg install-dev-pkg
+post-install-script:
 ifneq ($(POST_INSTALL_SCRIPT),)
 	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT) $@
 endif
+
+install: $(INSTALLTARGETS) install-bin-pkg install-dev-pkg post-install-script
 
 install-bin install-bin-pkg: $(INSTALLTARGETS)
 ifneq ($(TARGETTYPE),staticlib)
 	@echo "Installing binaries to your root filesystem:"
 	@echo " * $(TARGET) -> $(INSTALL_TARGET)"
 	@$(INSTALL) $(TARGET) $(INSTALL_TARGET)
-endif
-ifneq ($(POST_INSTALL_SCRIPT),)
-	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT) $@
 endif
 
 install-dev install-dev-pkg: $(TARGET_HEADERS) $(INSTALLTARGETS)
@@ -423,9 +422,6 @@ endif
 ifeq ($(TARGETTYPE),lib)
 	@echo " * $(TARGET:.so=.a) -> $(BUILDFS_TARGET:.so=.a)"
 	@$(INSTALL) $(TARGET:.so=.a) $(BUILDFS_TARGET:.so=.a)
-endif
-ifneq ($(POST_INSTALL_SCRIPT),)
-	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT) $@
 endif
 endif
 
@@ -444,16 +440,16 @@ $(TMPDIR):
 	@mkdir -p $@
 
 pkg: clean-files $(TMPDIR) all
-	@INSTALL_ROOT=$(TMPDIR) make install-bin-pkg
-	@BUILDFS=$(TMPDIR) make install-dev-pkg
+	@INSTALL_ROOT=$(TMPDIR) BUILDFS=$(TMPDIR) make	\
+			install-bin-pkg install-dev-pkg post-install-script
 	make $(PKG)
 
 bin-pkg: clean-files $(TMPDIR) all
-	@INSTALL_ROOT=$(TMPDIR) make install-bin-pkg
+	@INSTALL_ROOT=$(TMPDIR) make install-bin-pkg post-install-script
 	make $(BINPKG)
 
 dev-pkg: clean-files $(TMPDIR) all
-	@BUILDFS=$(TMPDIR) make install-dev-pkg
+	@BUILDFS=$(TMPDIR) make install-dev-pkg post-install-script
 	make $(DEVPKG)
 
 $(PKG) $(BINPKG) $(DEVPKG): FORCE
@@ -468,7 +464,7 @@ FORCE:
 
 .PHONY: all FORCE clean clean-files clean-pkg				\
 	install install-bin install-bin-pkg install-dev install-dev-pkg	\
-	bin-pkg dev-pkg pkg
+	post-install-script bin-pkg dev-pkg pkg
 
 clean-files:
 	rm -f $(BUILD_OUTPUT)*.d $(BUILD_OUTPUT)*.dd? $(BUILD_OUTPUT)*.o
