@@ -456,7 +456,7 @@ dev-pkg: clean-files $(TMPDIR) all
 	@BUILDFS=$(TMPDIR) make install-dev-pkg
 	make $(DEVPKG)
 
-$(PKG) $(BINPKG) $(DEVPKG):
+$(PKG) $(BINPKG) $(DEVPKG): FORCE
 	@if rmdir $(TMPDIR) &>/dev/null ;then echo "Nothing to pack" && exit 1; fi
 	cd $(TMPDIR) && tar czvf $@ *
 	@$(SUDORM) -rf $(TMPDIR)
@@ -464,7 +464,9 @@ $(PKG) $(BINPKG) $(DEVPKG):
 	@echo "Package $@ built"
 	@echo ""
 
-.PHONY: all clean clean-files clean-pkg		\
+FORCE:
+
+.PHONY: all FORCE clean clean-files clean-pkg				\
 	install install-bin install-bin-pkg install-dev install-dev-pkg	\
 	bin-pkg dev-pkg pkg
 
