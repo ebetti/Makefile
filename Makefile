@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.10-beta5 (June 27th, 2017)
+# Version 0.11-beta0 (July 11th, 2017)
 #
 # "One to build them all!"
 #
