@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.11-beta1 (July 11th, 2017)
+# Version 0.11-beta2 (July 12th, 2017)
 #
 # "One to build them all!"
 #
@@ -131,13 +131,15 @@ endif
 # If you want to build only few directories, just list them in the variable.
 # Not to include any directory, just leave the variable empty
 ifeq ($(BUILD_OUTPUT),)
-_EXTRA_DIRS?=$(shell find -L . -mindepth 1 -path ./.git -prune -o \( -type d -a \! -empty \) -print)
+EXTRA_DIRS?=$(shell find -L . -mindepth 1 -path ./.git -prune -o \( -type d -a \! -empty \) -print)
+SUBTARGETS_DIRS?=$(shell find -L . -mindepth 1 -path ./.git -prune -o \( -type d -a \! -empty \) -print)
 else
-_EXTRA_DIRS?=$(shell find -L . -mindepth 1 -path ./.git -prune -o \( -type d -a \! -empty -a \! -samefile $(BUILD_OUTPUT) \) -print )
+EXTRA_DIRS?=$(shell find -L . -mindepth 1 -path ./.git -prune -o \( -type d -a \! -empty -a \! -samefile $(BUILD_OUTPUT) \) -print )
+SUBTARGETS_DIRS?=$(shell find -L . -mindepth 1 -path ./.git -prune -o \( -type d -a \! -empty -a \! -samefile $(BUILD_OUTPUT) \) -print )
 endif
 
-EXTRA_DIRS:=$(shell for i in $(_EXTRA_DIRS) ; do if test ! -r $${i}/Makefile 2>/dev/null ; then echo $${i} ; fi ; done)
-SUBTARGETS_DIRS:=$(shell for i in $(_EXTRA_DIRS) ; do if test -r $${i}/Makefile 2>/dev/null ; then echo $${i} ; fi ; done)
+_EXTRA_DIRS:=$(shell for i in $(EXTRA_DIRS) ; do if test ! -r $${i}/Makefile 2>/dev/null ; then echo $${i} ; fi ; done)
+_SUBTARGETS_DIRS:=$(shell for i in $(SUBTARGETS_DIRS) ; do if test -r $${i}/Makefile 2>/dev/null ; then echo $${i} ; fi ; done)
 
 # Uncomment (and eventually change the header file name)
 # to install an header file along with your target
@@ -215,13 +217,13 @@ endif
 ####### NOTE! You should not need to change anything below this line! ########
 ##############################################################################
 
-CSRC:=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.c 2>/dev/null ; done)
+CSRC:=$(shell for i in $(_EXTRA_DIRS) ; do ls $${i}/*.c 2>/dev/null ; done)
 CSRC+=$(shell ls *.c 2>/dev/null)
-CPPSRC1:=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.cpp 2>/dev/null ; done)
+CPPSRC1:=$(shell for i in $(_EXTRA_DIRS) ; do ls $${i}/*.cpp 2>/dev/null ; done)
 CPPSRC1+=$(shell ls *.cpp 2>/dev/null)
-CPPSRC2:=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.cc 2>/dev/null ; done)
+CPPSRC2:=$(shell for i in $(_EXTRA_DIRS) ; do ls $${i}/*.cc 2>/dev/null ; done)
 CPPSRC2+=$(shell ls *.cc 2>/dev/null)
-CPPSRC3:=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.C 2>/dev/null ; done)
+CPPSRC3:=$(shell for i in $(_EXTRA_DIRS) ; do ls $${i}/*.C 2>/dev/null ; done)
 CPPSRC3+=$(shell ls *.C 2>/dev/null)
 CPPSRC:=$(CPPSRC1) $(CPPSRC2) $(CPPSRC3)
 SRC:=$(CSRC) $(CPPSRC)
@@ -236,14 +238,14 @@ DEP+=$(CPPSRC2:.cc=.dd2)
 DEP+=$(CPPSRC3:.C=.dd3)
 ifneq ($(BUILD_OUTPUT),)
 _CREATE_BUILD_OUTPUT:=$(shell mkdir -p $(BUILD_OUTPUT))
-_CREATE_BUILD_OUTPUT:=$(shell for i in $(EXTRA_DIRS) ; do mkdir -p $(BUILD_OUTPUT)/$${i} ; done)
+_CREATE_BUILD_OUTPUT:=$(shell for i in $(_EXTRA_DIRS) ; do mkdir -p $(BUILD_OUTPUT)/$${i} ; done)
 # From now on, making sure there is a slash at the end
 BUILD_OUTPUT:=$(BUILD_OUTPUT:%/=%)/
 OBJ:=$(OBJ:%=$(BUILD_OUTPUT)%)
 DEP:=$(DEP:%=$(BUILD_OUTPUT)%)
 endif
 HEADERS=$(shell ls *.h *.hpp 2> /dev/null)
-HEADERS+=$(shell for i in $(EXTRA_DIRS) ; do ls $${i}/*.h $${i}/*.hpp  2>/dev/null ; done)
+HEADERS+=$(shell for i in $(_EXTRA_DIRS) ; do ls $${i}/*.h $${i}/*.hpp  2>/dev/null ; done)
 
 TMPDIR=$(shell realpath -P $(BUILD_OUTPUT)._tmp)
 PKG?=$(BUILD_OUTPUT)$(TARGETNAME).tar.gz
@@ -255,7 +257,7 @@ DEVPKG:=$(shell readlink -mn $(DEVPKG))
 
 .SECONDARY: $(DEP) $(OBJ)
 
-INCFLAGS+=$(shell for i in $(EXTRA_DIRS) ; do echo "-I$${i} " ; done)
+INCFLAGS+=$(shell for i in $(_EXTRA_DIRS) ; do echo "-I$${i} " ; done)
 
 # Please note that the order of "-I" directives is important. My choice is to
 # first look for headers in the sources, and than in the system directories.
@@ -340,7 +342,7 @@ endif
 
 
 all: $(ALLTARGETS) $(CTAGSTARGET)
-	@for t in $(SUBTARGETS_DIRS) ; do	\
+	@for t in $(_SUBTARGETS_DIRS) ; do	\
 		make -C $$t || break;		\
 	done
 
@@ -402,7 +404,7 @@ $(BUILD_OUTPUT)tags: $(SRC) $(HEADERS)
 post-install-script:
 ifneq ($(POST_INSTALL_SCRIPT),)
 	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT) $@
-	@for t in $(SUBTARGETS_DIRS) ; do			\
+	@for t in $(_SUBTARGETS_DIRS) ; do			\
 		INSTALL_ROOT=$(INSTALL_ROOT) BUILDFS=$(BUILDFS)	\
 			make -C $$t $@ || break ;		\
 	done
@@ -416,7 +418,7 @@ ifneq ($(TARGETTYPE),staticlib)
 	@echo " * $(TARGET) -> $(INSTALL_TARGET)"
 	@$(INSTALL) $(TARGET) $(INSTALL_TARGET)
 endif
-	@for t in $(SUBTARGETS_DIRS) ; do			\
+	@for t in $(_SUBTARGETS_DIRS) ; do			\
 		INSTALL_ROOT=$(INSTALL_ROOT) BUILDFS=$(BUILDFS)	\
 			make -C $$t $@ || break ;		\
 	done
@@ -433,7 +435,7 @@ ifeq ($(TARGETTYPE),lib)
 	@$(INSTALL) $(TARGET:.so=.a) $(BUILDFS_TARGET:.so=.a)
 endif
 endif
-	@for t in $(SUBTARGETS_DIRS) ; do			\
+	@for t in $(_SUBTARGETS_DIRS) ; do			\
 		INSTALL_ROOT=$(INSTALL_ROOT) BUILDFS=$(BUILDFS)	\
 			make -C $$t $@ || break ;		\
 	done
@@ -480,13 +482,13 @@ FORCE:
 	post-install-script bin-pkg dev-pkg pkg
 
 clean-subtargets:
-	@for t in $(SUBTARGETS_DIRS) ; do	\
+	@for t in $(_SUBTARGETS_DIRS) ; do	\
 		make -C $$t clean;		\
 	done
 
 clean-files: clean-subtargets
 	@rm -vf $(BUILD_OUTPUT)*.d $(BUILD_OUTPUT)*.dd? $(BUILD_OUTPUT)*.o
-	@for i in $(EXTRA_DIRS) ; do				\
+	@for i in $(_EXTRA_DIRS) ; do				\
 		rm -vf $(BUILD_OUTPUT)$${i}/*.d ; 		\
 		rm -vf $(BUILD_OUTPUT)$${i}/*.dd? ;		\
 		rm -vf $(BUILD_OUTPUT)$${i}/*.o ; 		\
