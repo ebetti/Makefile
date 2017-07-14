@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.11-beta2 (July 12th, 2017)
+# Version 0.11-beta3 (July 14th, 2017)
 #
 # "One to build them all!"
 #
@@ -247,7 +247,7 @@ endif
 HEADERS=$(shell ls *.h *.hpp 2> /dev/null)
 HEADERS+=$(shell for i in $(_EXTRA_DIRS) ; do ls $${i}/*.h $${i}/*.hpp  2>/dev/null ; done)
 
-TMPDIR=$(shell realpath -P $(BUILD_OUTPUT)._tmp)
+TMPDIR=$(shell readlink -mn $(BUILD_OUTPUT)._tmp)
 PKG?=$(BUILD_OUTPUT)$(TARGETNAME).tar.gz
 PKG:=$(shell readlink -mn $(PKG))
 BINPKG?=$(BUILD_OUTPUT)$(TARGETNAME)-bin.tar.gz
