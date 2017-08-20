@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.11-beta3 (July 14th, 2017)
+# Version 0.11-beta4 (August 20th, 2017)
 #
 # "One to build them all!"
 #
@@ -468,7 +468,7 @@ dev-pkg: clean-files $(TMPDIR) all
 	make $(DEVPKG)
 
 $(PKG) $(BINPKG) $(DEVPKG): FORCE
-	@if rmdir $(TMPDIR) &>/dev/null ;then echo "Nothing to pack" && exit 1; fi
+	@if rmdir $(TMPDIR) 2>&1 >/dev/null ;then echo "Nothing to pack" && exit 1; fi
 	cd $(TMPDIR) && tar czvf $@ *
 	@$(SUDORM) -rf $(TMPDIR)
 	@echo ""
