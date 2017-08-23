@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.11-beta4 (August 20th, 2017)
+# Version 0.11-beta5 (August 23th, 2017)
 #
 # "One to build them all!"
 #
@@ -121,9 +121,10 @@ OPTIMIZE_LIB_VISIBILITY?=n
 #       to the PATH and LD_LIBRARY_PATH.
 ENV_SCRIPT?=
 
+ENV_SCRIPT_OUTPUT=/tmp/makeenv.$(TARGETNAME).$(TARGETTYPE)
 ifneq ($(ENV_SCRIPT),)
-IGNOREME := $(shell bash -c "source $(ENV_SCRIPT); env | sed 's/=/:=/' | sed 's/^/export /' > /tmp/shellenvformake")
-include /tmp/shellenvformake
+IGNOREME := $(shell bash -c "source $(ENV_SCRIPT); env | sed 's/=/:=/' | sed 's/^/export /' > $(ENV_SCRIPT_OUTPUT)")
+include $(ENV_SCRIPT_OUTPUT)
 endif
 
 # Build also sources from all the directories listed in EXTRA_DIRS
@@ -509,4 +510,4 @@ ifneq ($(BUILD_OUTPUT),)
 	@for i in $$(find $(BUILD_OUTPUT) -mindepth 1 -type d | sort -r); do \
 		rmdir -v $${i} ; done
 endif
-
+	@rm -f $(ENV_SCRIPT_OUTPUT)
