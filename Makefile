@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.11-beta5 (August 23th, 2017)
+# Version 0.11-beta6 (August 1st, 2018)
 #
 # "One to build them all!"
 #
@@ -26,12 +26,12 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -201,7 +201,7 @@ CFLAGS?=$(EXTRA_CFLAGS) -Wall -Wextra -Wno-unused-parameter -fPIC # -Wno-missing
 CXXFLAGS?=$(EXTRA_CFLAGS) -Wall -Wextra -Wno-unused-parameter -fPIC # -Wno-missing-field-initializers
 
 LDFLAGS:=$(LDFLAGS) -L$(BUILDFS)/$(INSTALL_PREFIX)/$(LIBSUBDIR) 	\
-		    -L$(BUILDFS)/usr/$(LIBSUBDIR) 
+		    -L$(BUILDFS)/usr/$(LIBSUBDIR)
 
 # You might want to customize this...
 ifeq ($(DEBUG),y)
@@ -445,10 +445,9 @@ ifneq ($(HEADERS_TO_INSTALL),)
 $(HEADERS_INSTALL_DIR)/$(HEADERS_TO_INSTALL) $(INSTALL_HEADER)
 	@echo "Installing headers to your build filesystem:"
 	@for h in $^ ; do						\
-		bh=$$(basename $$h);					\
-		test "$$h" = "$(HEADERS_INSTALL_DIR)/$$bh" && continue;	\
-		echo " * $$h -> $(HEADERS_INSTALL_DIR)/$$bh";		\
-		$(INSTALL) $$h $(HEADERS_INSTALL_DIR)/$$bh;		\
+		test "$$h" = "$(HEADERS_INSTALL_DIR)/$$h" && continue;	\
+		echo " * $$h -> $(HEADERS_INSTALL_DIR)/$$h";		\
+		$(INSTALL) $$h $(HEADERS_INSTALL_DIR)/$$h;		\
 	done
 endif
 
