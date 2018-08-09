@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.11-beta6 (August 1st, 2018)
+# Version 0.11-beta7 (August 9th, 2018)
 #
 # "One to build them all!"
 #
@@ -209,6 +209,7 @@ ifeq ($(DEBUG),y)
 	# both x86 and arm.
 	CFLAGS+= -g -O0 -rdynamic -fno-omit-frame-pointer -fno-inline -funwind-tables
 	CXXFLAGS+= -g -O0 -rdynamic -fno-omit-frame-pointer -fno-inline -funwind-tables
+	OPTIMIZE_LIB_VISIBILITY=n
 else
 	CFLAGS+= -O3 -DNDEBUG
 	CXXFLAGS+= -O3 -DNDEBUG
