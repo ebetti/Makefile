@@ -210,6 +210,8 @@ ifeq ($(DEBUG),y)
 	CFLAGS+= -g -O0 -rdynamic -fno-omit-frame-pointer -fno-inline -funwind-tables
 	CXXFLAGS+= -g -O0 -rdynamic -fno-omit-frame-pointer -fno-inline -funwind-tables
 	OPTIMIZE_LIB_VISIBILITY=n
+	CFLAGS+=-D__public=
+	CXXFLAGS+=-D__public=
 else
 	CFLAGS+= -O3 -DNDEBUG
 	CXXFLAGS+= -O3 -DNDEBUG
