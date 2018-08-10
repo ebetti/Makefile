@@ -393,15 +393,11 @@ ifeq ($(OPTIMIZE_LIB_VISIBILITY),y)
 $(VISHEADER):
 	@echo '#ifndef _VIS_H_'				>  $(VISHEADER)
 	@echo '#define _VIS_H_'				>> $(VISHEADER)
-	@echo '#ifdef NDEBUG'				>> $(VISHEADER)
 	@echo '#pragma GCC visibility push(default)'	>> $(VISHEADER)
 	@echo '#pragma GCC visibility pop'		>> $(VISHEADER)
 	@echo '#define __public __attribute__((visibility ("default")))' \
 							>> $(VISHEADER)
-	@echo '#else'					>> $(VISHEADER)
-	@echo '#define __public'			>> $(VISHEADER)
-	@echo '#endif /* NDEBUG */'			>> $(VISHEADER)
-	@echo '#endif /* _VIS_H_ */'			>> $(VISHEADER)
+	@echo '#endif'					>> $(VISHEADER)
 endif
 
 $(BUILD_OUTPUT)tags: $(SRC) $(HEADERS)
