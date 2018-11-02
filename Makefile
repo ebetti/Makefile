@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.11-beta7 (August 9th, 2018)
+# Version 0.11-beta8 (November 2nd, 2018)
 #
 # "One to build them all!"
 #
@@ -346,7 +346,7 @@ endif
 
 
 all: $(ALLTARGETS) $(CTAGSTARGET)
-	@for t in $(_SUBTARGETS_DIRS) ; do	\
+	+@for t in $(_SUBTARGETS_DIRS) ; do	\
 		make -C $$t || break;		\
 	done
 
