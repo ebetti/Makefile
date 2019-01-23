@@ -1,7 +1,7 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
 #
-# Version 0.11-beta8 (November 2nd, 2018)
+# Version 0.11-beta9 (January 23rd, 2019)
 #
 # "One to build them all!"
 #
@@ -82,7 +82,7 @@ USESUDO?=y
 BUILD_OUTPUT?=
 
 # Add here extra include directories (EXTRA_DIRS are automatically added)
-#INCFLAGS=-I../your_include_directory
+#INCFLAGS?=-I../your_include_directory
 
 # Add here your -L and -l linker options
 # Remember to add -lstdc++ when linking C++ code
@@ -148,7 +148,7 @@ _SUBTARGETS_DIRS:=$(shell for i in $(SUBTARGETS_DIRS) ; do if test -r $${i}/Make
 # It is allowed only one single file with extension .h
 # Any file that it includes using doblue quotes (not angle brackets!) is going
 # to be installed as well
-#INSTALL_HEADER=$(TARGETNAME).h
+#INSTALL_HEADER?=$(TARGETNAME).h
 
 # The filesystem which you build against
 # Note that in this file system will also be installed header files and libraries.
@@ -163,37 +163,37 @@ INSTALL_PREFIX?=/usr/local
 # INSTALL_PREFIX's subdirectory where to install targets
 # Leave it commented to use defaults:
 # - 'lib' (or lib64) for libraries, 'bin' for executables
-#INSTALL_DIR=mydir
+#INSTALL_DIR?=mydir
 
 #CROSS_COMPILE?=arm-arago-linux-gnueabi-
 CROSS_COMPILE?=
 
 ifneq ($(CROSS_COMPILE),)
-	LIBSUBDIR=lib
+	LIBSUBDIR?=lib
 else
 ifeq ($(shell uname -m), x86_64)
-	LIBSUBDIR=lib64
+	LIBSUBDIR?=lib64
 else
-	LIBSUBDIR=lib
+	LIBSUBDIR?=lib
 endif
 endif
 
-CC=$(CROSS_COMPILE)gcc
-CXX=$(CROSS_COMPILE)g++
-CPP=$(CROSS_COMPILE)cpp
-AR=$(CROSS_COMPILE)ar
+CC?=$(CROSS_COMPILE)gcc
+CXX?=$(CROSS_COMPILE)g++
+CPP?=$(CROSS_COMPILE)cpp
+AR?=$(CROSS_COMPILE)ar
 
-POST_INSTALL_SCRIPT=./post_install.sh
-POST_INSTALL_SCRIPT_CMD=BUILDFS=$(BUILDFS) INSTALL_ROOT=$(INSTALL_ROOT) INSTALL_PREFIX=$(INSTALL_PREFIX) TARGETNAME=$(TARGETNAME) $(POST_INSTALL_SCRIPT)
+POST_INSTALL_SCRIPT?=./post_install.sh
+POST_INSTALL_SCRIPT_CMD?=BUILDFS=$(BUILDFS) INSTALL_ROOT=$(INSTALL_ROOT) INSTALL_PREFIX=$(INSTALL_PREFIX) TARGETNAME=$(TARGETNAME) $(POST_INSTALL_SCRIPT)
 
 ifeq ($(USESUDO),y)
-INSTALL=sudo install -D
-SUDORM=sudo rm
-RUN_POST_INSTALL_SCRIPT=sudo $(POST_INSTALL_SCRIPT_CMD)
+INSTALL?=sudo install -D
+SUDORM?=sudo rm
+RUN_POST_INSTALL_SCRIPT?=sudo $(POST_INSTALL_SCRIPT_CMD)
 else
-INSTALL=install -D
-SUDORM=rm
-RUN_POST_INSTALL_SCRIPT=$(POST_INSTALL_SCRIPT_CMD)
+INSTALL?=install -D
+SUDORM?=rm
+RUN_POST_INSTALL_SCRIPT?=$(POST_INSTALL_SCRIPT_CMD)
 endif
 
 EXTRA_CFLAGS?=
