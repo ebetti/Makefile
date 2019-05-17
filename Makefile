@@ -252,14 +252,6 @@ endif
 HEADERS=$(shell ls *.h *.hpp 2> /dev/null)
 HEADERS+=$(shell for i in $(_EXTRA_DIRS) ; do ls $${i}/*.h $${i}/*.hpp  2>/dev/null ; done)
 
-TMPDIR=$(shell readlink -mn $(BUILD_OUTPUT)._tmp)
-PKG?=$(BUILD_OUTPUT)$(TARGETNAME).tar.gz
-PKG:=$(shell readlink -mn $(PKG))
-BINPKG?=$(BUILD_OUTPUT)$(TARGETNAME)-bin.tar.gz
-BINPKG:=$(shell readlink -mn $(BINPKG))
-DEVPKG?=$(BUILD_OUTPUT)$(TARGETNAME)-dev.tar.gz
-DEVPKG:=$(shell readlink -mn $(DEVPKG))
-
 .SECONDARY: $(DEP) $(OBJ)
 
 INCFLAGS+=$(shell for i in $(_EXTRA_DIRS) ; do echo "-I$${i} " ; done)
@@ -276,11 +268,13 @@ LINK=$(CC)
 TARGET=$(TARGETNAME)
 
 ifeq ($(TARGETTYPE),exec)
+	TARGETEXT=$(TARGETNAME)
 	INSTALL_DIR?=bin
 	OPTIMIZE_LIB_VISIBILITY=n
 endif
 
 ifeq ($(TARGETTYPE),staticexec)
+	TARGETEXT=$(TARGETNAME)
 	LINK+=-static
 	INSTALL_DIR?=bin
 	OPTIMIZE_LIB_VISIBILITY=n
@@ -288,6 +282,7 @@ endif
 
 ifeq ($(TARGETTYPE),sharedlib)
 	TARGET=lib$(TARGETNAME).so
+	TARGETEXT=$(TARGETNAME)lib
 	LDFLAGS+=-Wl,-soname,$(TARGET) -shared
 	INSTALL_DIR?=$(LIBSUBDIR)
 endif
@@ -295,6 +290,7 @@ endif
 ifeq ($(TARGETTYPE),lib)
 	# Same as sharedlib!
 	TARGET=lib$(TARGETNAME).so
+	TARGETEXT=$(TARGETNAME)lib
 	LDFLAGS+=-Wl,-soname,$(TARGET) -shared
 	INSTALL_DIR?=$(LIBSUBDIR)
 endif
@@ -303,6 +299,14 @@ ifeq ($(TARGETTYPE),staticlib)
 	TARGET=lib$(TARGETNAME).a
 	INSTALL_DIR?=$(LIBSUBDIR)
 endif
+
+TMPDIR=$(shell readlink -mn $(BUILD_OUTPUT)._tmp)
+PKG?=$(BUILD_OUTPUT)$(TARGETEXT).tar.gz
+PKG:=$(shell readlink -mn $(PKG))
+BINPKG?=$(BUILD_OUTPUT)$(TARGETEXT)-bin.tar.gz
+BINPKG:=$(shell readlink -mn $(BINPKG))
+DEVPKG?=$(BUILD_OUTPUT)$(TARGETEXT)-dev.tar.gz
+DEVPKG:=$(shell readlink -mn $(DEVPKG))
 
 ifneq ($(INSTALL_HEADER),)
 	# Note that here I use := instead of = because I want CFLAGS to expand
