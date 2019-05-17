@@ -1,5 +1,6 @@
 # Author: Emiliano Betti, copyright (C) 2011
 # e-mail: betti@linux.com
+# License: GNU GPLv2
 #
 # Version 0.11-beta9 (January 23rd, 2019)
 #
@@ -32,7 +33,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
+# You should have received a copy of the GNU General Public License version 2
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ##############################################################################
