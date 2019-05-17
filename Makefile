@@ -2,7 +2,7 @@
 # e-mail: betti@linux.com
 # License: GNU GPLv2
 #
-# Version 0.11-beta9 (January 23rd, 2019)
+# Version 0.12 (May 17th, 2019)
 #
 # "One to build them all!"
 #
@@ -103,6 +103,12 @@ LDFLAGS?=
 # complicated. When it comes to circular references, fix your code!
 # For more info: http://stackoverflow.com/questions/45135/why-does-the-order-in-which-libraries-are-linked-sometimes-cause-errors-in-gcc
 STATICLIBS?=
+
+# file name for version file
+VERSIONFILE?=version
+
+# Author name
+AUTHOR?=
 
 ##############################################################################
 ############################## Advanced tweaks ###############################
@@ -300,6 +306,20 @@ ifeq ($(TARGETTYPE),staticlib)
 	INSTALL_DIR?=$(LIBSUBDIR)
 endif
 
+# Checking if we are in a git repo or not
+USINGGIT?=$(shell if git remote show -n &>/dev/null ;then echo -n y ; fi)
+ifeq ($(USINGGIT),y)
+	COMMIT=$(shell git rev-parse HEAD)
+	LATEST_TAG=$(shell git describe --abbrev=0 --tags)
+	COUNT_EXTRA_COMMITS=$(shell git rev-list $(LATEST_TAG)..HEAD --count)
+	VERSION?=$(LATEST_TAG).$(COUNT_EXTRA_COMMITS)
+	DATE?=$(shell git show -s --format=%ci HEAD | cut -d ' ' -f 1)
+else
+	COMMIT='Not in a git repository'
+	DATE?=$(shell date +%s)
+	VERSION?=latest
+endif
+
 TMPDIR=$(shell readlink -mn $(BUILD_OUTPUT)._tmp)
 PKG?=$(BUILD_OUTPUT)$(TARGETEXT).tar.gz
 PKG:=$(shell readlink -mn $(PKG))
@@ -307,6 +327,9 @@ BINPKG?=$(BUILD_OUTPUT)$(TARGETEXT)-bin.tar.gz
 BINPKG:=$(shell readlink -mn $(BINPKG))
 DEVPKG?=$(BUILD_OUTPUT)$(TARGETEXT)-dev.tar.gz
 DEVPKG:=$(shell readlink -mn $(DEVPKG))
+SRCPKGDIR?=$(TARGETEXT)-src
+SRCPKG?=$(BUILD_OUTPUT)$(TARGETEXT)-src-$(VERSION).tar.gz
+SRCPKG:=$(shell readlink -mn $(SRCPKG))
 
 ifneq ($(INSTALL_HEADER),)
 	# Note that here I use := instead of = because I want CFLAGS to expand
@@ -459,7 +482,19 @@ $(HEADERS_INSTALL_DIR)/$(HEADERS_TO_INSTALL) $(INSTALL_HEADER)
 	done
 endif
 
+$(VERSIONFILE):
+	@echo "$(TARGETEXT) $(VERSION)" > $@
+	@echo "Commit: $(COMMIT)" >> $@
+ifneq ($(AUTHOR),)
+	@echo "Copyright ${AUTHOR}"  >> $@
+endif
+	@echo "Release date: $(DATE)" >> $@
+	@echo "Package created: $(shell date)" >> $@
+	@echo "Version file:"
+	@cat $@
+
 $(TMPDIR):
+	@$(SUDORM) -rf $(TMPDIR)
 	@mkdir -p $@
 
 pkg: clean-files $(TMPDIR) all
@@ -475,9 +510,17 @@ dev-pkg: clean-files $(TMPDIR) all
 	@BUILDFS=$(TMPDIR) make install-dev-pkg post-install-script
 	make $(DEVPKG)
 
-$(PKG) $(BINPKG) $(DEVPKG): FORCE
+src-pkg: $(TMPDIR)
+	@mkdir -p $(TMPDIR)/$(SRCPKGDIR)
+	@cp -av * $(TMPDIR)/$(SRCPKGDIR)
+	@make -C $(TMPDIR)/$(SRCPKGDIR) clean
+	@make -C $(TMPDIR)/$(SRCPKGDIR) $(VERSIONFILE)
+	@make -C $(TMPDIR)/$(SRCPKGDIR) clean-files clean-pkg
+	@make $(SRCPKG)
+
+$(PKG) $(BINPKG) $(DEVPKG) $(SRCPKG): FORCE
 	@if rmdir $(TMPDIR) 2>&1 >/dev/null ;then echo "Nothing to pack" && exit 1; fi
-	cd $(TMPDIR) && tar czvf $@ *
+	cd $(TMPDIR) && tar czvf $@ --exclude=.gitignore *
 	@$(SUDORM) -rf $(TMPDIR)
 	@echo ""
 	@echo "Package $@ built"
@@ -510,7 +553,7 @@ endif
 	fi
 
 clean-pkg:
-	@rm -vf $(PKG) $(BINPKG) $(DEVPKG)
+	@rm -vf $(PKG) $(BINPKG) $(DEVPKG) $(SRCPKG)
 
 clean: clean-files clean-pkg
 ifneq ($(BUILD_OUTPUT),)
@@ -518,3 +561,4 @@ ifneq ($(BUILD_OUTPUT),)
 		rmdir -v $${i} ; done
 endif
 	@rm -f $(ENV_SCRIPT_OUTPUT)
+	@rm -vf $(VERSIONFILE)
