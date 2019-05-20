@@ -512,7 +512,7 @@ dev-pkg: clean-files $(TMPDIR) all
 
 src-pkg: $(TMPDIR)
 	@mkdir -p $(TMPDIR)/$(SRCPKGDIR)
-	@cp -av * $(TMPDIR)/$(SRCPKGDIR)
+	@cp -rHv * $(TMPDIR)/$(SRCPKGDIR)
 	@make -C $(TMPDIR)/$(SRCPKGDIR) clean
 	@make -C $(TMPDIR)/$(SRCPKGDIR) $(VERSIONFILE)
 	@make -C $(TMPDIR)/$(SRCPKGDIR) clean-files clean-pkg
