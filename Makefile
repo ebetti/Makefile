@@ -2,7 +2,7 @@
 # e-mail: betti@linux.com
 # License: GNU GPLv2
 #
-# Version 0.12 (May 17th, 2019)
+# Version 0.13 (Jul 30th, 2019)
 #
 # "One to build them all!"
 #
@@ -72,6 +72,7 @@ TARGETNAME?=a.out
 TARGETTYPE?=exec
 
 # Set to 'y' to enable DEBUG
+# Set to 'a' to enable DEBUG and ASAN support
 DEBUG?=n
 
 # 'y' -> if you want this Makefile to use 'sudo' when installing target or
@@ -210,6 +211,13 @@ CXXFLAGS?=$(EXTRA_CFLAGS) -Wall -Wextra -Wno-unused-parameter -fPIC # -Wno-missi
 LDFLAGS:=$(LDFLAGS) -L$(BUILDFS)/$(INSTALL_PREFIX)/$(LIBSUBDIR) 	\
 		    -L$(BUILDFS)/usr/$(LIBSUBDIR)
 
+ifeq ($(DEBUG),a)
+	DEBUG=y
+	USEASAN?=y
+else
+	USEASAN?=n
+endif
+
 # You might want to customize this...
 ifeq ($(DEBUG),y)
 	# The following flags are needed to support backtrace() function on
@@ -222,6 +230,11 @@ ifeq ($(DEBUG),y)
 else
 	CFLAGS+= -O3 -DNDEBUG
 	CXXFLAGS+= -O3 -DNDEBUG
+endif
+
+ifeq ($(USEASAN),y)
+CFLAGS+=-fsanitize=address
+LDFLAGS+=-fsanitize=address
 endif
 
 ##############################################################################
