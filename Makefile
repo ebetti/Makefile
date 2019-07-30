@@ -234,6 +234,7 @@ endif
 
 ifeq ($(USEASAN),y)
 CFLAGS+=-fsanitize=address
+CXXFLAGS+=-fsanitize=address
 LDFLAGS+=-fsanitize=address
 endif
 
