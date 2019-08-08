@@ -2,7 +2,7 @@
 # e-mail: betti@linux.com
 # License: GNU GPLv2
 #
-# Version 0.13 (Jul 30th, 2019)
+# Version 0.14 (Aug 8th, 2019)
 #
 # "One to build them all!"
 #
@@ -324,12 +324,15 @@ endif
 USINGGIT?=$(shell if git remote show -n &>/dev/null ;then echo -n y ; fi)
 ifeq ($(USINGGIT),y)
 	COMMIT=$(shell git rev-parse HEAD)
+	DATE?=$(shell git show -s --format=%ci HEAD | cut -d ' ' -f 1)
+	USINGGIT=$(shell if git describe --abbrev=0 --tags &>/dev/null ; echo -n y ; else echo -n n ; fi)
+endif
+ifeq ($(USINGGIT),y)
 	LATEST_TAG=$(shell git describe --abbrev=0 --tags)
 	COUNT_EXTRA_COMMITS=$(shell git rev-list $(LATEST_TAG)..HEAD --count)
 	VERSION?=$(LATEST_TAG).$(COUNT_EXTRA_COMMITS)
-	DATE?=$(shell git show -s --format=%ci HEAD | cut -d ' ' -f 1)
 else
-	COMMIT='Not in a git repository'
+	COMMIT?='Not in a git repository'
 	DATE?=$(shell date +%s)
 	VERSION?=latest
 endif
