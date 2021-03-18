@@ -583,4 +583,3 @@ ifneq ($(BUILD_OUTPUT),)
 		rmdir -v $${i} ; done
 endif
 	@rm -f $(ENV_SCRIPT_OUTPUT)
-	@rm -vf $(VERSIONFILE)
