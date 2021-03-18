@@ -327,7 +327,7 @@ USINGGIT?=$(shell if git remote show -n &>/dev/null ;then echo -n y ; fi)
 ifeq ($(USINGGIT),y)
 	COMMIT=$(shell git rev-parse HEAD)
 	DATE?=$(shell git show -s --format=%ci HEAD | cut -d ' ' -f 1)
-	USINGGIT=$(shell if git describe --abbrev=0 --tags &>/dev/null ; echo -n y ; else echo -n n ; fi)
+	USINGGIT=$(shell if git describe --abbrev=0 --tags &>/dev/null ; then echo -n y ; else echo -n n ; fi)
 endif
 ifeq ($(USINGGIT),y)
 	LATEST_TAG=$(shell git describe --abbrev=0 --tags)
