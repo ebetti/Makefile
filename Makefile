@@ -394,7 +394,7 @@ endif
 
 all: $(ALLTARGETS) $(CTAGSTARGET)
 	+@for t in $(_SUBTARGETS_DIRS) ; do	\
-		make -C $$t || break;		\
+		USEASAN=$(USEASAN) make -C $$t || break;	\
 	done
 
 $(BUILD_OUTPUT)%.a: $(OBJ)
