@@ -322,6 +322,7 @@ endif
 
 ifeq ($(TARGETTYPE),staticlib)
 	TARGET=lib$(TARGETNAME).a
+	TARGETEXT=$(TARGETNAME)lib
 	INSTALL_DIR?=$(LIBSUBDIR)
 endif
 
