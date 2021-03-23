@@ -422,23 +422,23 @@ endif
 # Note: use -MM instead of -M if you do not want to include system headers in
 #       the dependencies
 $(BUILD_OUTPUT)%.d: %.c $(VISHEADER)
-	@$(CC) $(CFLAGS) -MM $< > $@.$$$$;			\
-	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
+	@$(CC) $(CFLAGS) -MM -MT $@ $< > $@.$$$$;		\
+	sed 's,\($*\)\.d[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
 	rm -f $@.$$$$
 
 $(BUILD_OUTPUT)%.dd1: %.cpp $(VISHEADER)
-	@$(CXX) $(CXXFLAGS) -MM $< > $@.$$$$;			\
-	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
+	@$(CXX) $(CXXFLAGS) -MM -MT $@ $< > $@.$$$$;		\
+	sed 's,\($*\)\.d[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
 	rm -f $@.$$$$
 
 $(BUILD_OUTPUT)%.dd2: %.cc $(VISHEADER)
-	@$(CXX) $(CXXFLAGS) -MM $< > $@.$$$$;			\
-	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
+	@$(CXX) $(CXXFLAGS) -MM -MT $@ $< > $@.$$$$;		\
+	sed 's,\($*\)\.d[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
 	rm -f $@.$$$$
 
 $(BUILD_OUTPUT)%.dd3: %.C $(VISHEADER)
-	@$(CXX) $(CXXFLAGS) -MM $< > $@.$$$$;			\
-	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
+	@$(CXX) $(CXXFLAGS) -MM -MT $@ $< > $@.$$$$;		\
+	sed 's,\($*\)\.d[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
 	rm -f $@.$$$$
 
 ifeq ($(OPTIMIZE_LIB_VISIBILITY),y)
