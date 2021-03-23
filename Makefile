@@ -133,7 +133,7 @@ ENV_SCRIPT?=
 
 ENV_SCRIPT_OUTPUT=/tmp/makeenv.$(TARGETNAME).$(TARGETTYPE)
 ifneq ($(ENV_SCRIPT),)
-IGNOREME := $(shell bash -c "source $(ENV_SCRIPT); env | sed 's/=/:=/' | sed 's/^/export /' > $(ENV_SCRIPT_OUTPUT)")
+IGNOREME := $(shell bash -c "source \"$(ENV_SCRIPT)\"; env | sed 's/=/:=/' | sed 's/^/export /' > \"$(ENV_SCRIPT_OUTPUT)\"")
 include $(ENV_SCRIPT_OUTPUT)
 endif
 
@@ -197,7 +197,7 @@ endif
 endif
 
 POST_INSTALL_SCRIPT?=./post_install.sh
-POST_INSTALL_SCRIPT_CMD?=BUILDFS=$(BUILDFS) INSTALL_ROOT=$(INSTALL_ROOT) INSTALL_PREFIX=$(INSTALL_PREFIX) TARGETNAME=$(TARGETNAME) $(POST_INSTALL_SCRIPT)
+POST_INSTALL_SCRIPT_CMD?=BUILDFS="$(BUILDFS)" INSTALL_ROOT="$(INSTALL_ROOT)" INSTALL_PREFIX="$(INSTALL_PREFIX)" TARGETNAME="$(TARGETNAME)" $(POST_INSTALL_SCRIPT)
 
 ifeq ($(USESUDO),y)
 INSTALL?=sudo install -D
@@ -213,8 +213,8 @@ EXTRA_CFLAGS?=
 CFLAGS?=$(EXTRA_CFLAGS) -Wall -Wextra -Wno-unused-parameter -fPIC # -Wno-missing-field-initializers
 CXXFLAGS?=$(EXTRA_CFLAGS) -Wall -Wextra -Wno-unused-parameter -fPIC # -Wno-missing-field-initializers
 
-LDFLAGS:=$(LDFLAGS) -L$(BUILDFS)/$(INSTALL_PREFIX)/$(LIBSUBDIR) 	\
-		    -L$(BUILDFS)/usr/$(LIBSUBDIR)
+LDFLAGS:=$(LDFLAGS) -L"$(BUILDFS)/$(INSTALL_PREFIX)/$(LIBSUBDIR)" 	\
+		    -L"$(BUILDFS)/usr/$(LIBSUBDIR)"
 
 ifeq ($(DEBUG),a)
 	DEBUG=y
@@ -283,7 +283,7 @@ INCFLAGS+=$(shell for i in $(_EXTRA_DIRS) ; do echo "-I$${i} " ; done)
 
 # Please note that the order of "-I" directives is important. My choice is to
 # first look for headers in the sources, and than in the system directories.
-INCFLAGS:=-I. $(INCFLAGS) -I$(BUILDFS)/$(INSTALL_PREFIX)/include -I$(BUILDFS)/usr/include
+INCFLAGS:=-I. $(INCFLAGS) -I"$(BUILDFS)/$(INSTALL_PREFIX)/include" -I"$(BUILDFS)/usr/include"
 
 CFLAGS+=$(INCFLAGS)
 CXXFLAGS+=$(INCFLAGS)
@@ -357,7 +357,7 @@ SRCPKG:=$(shell readlink -mn $(SRCPKG))
 ifneq ($(INSTALL_HEADER),)
 	# Note that here I use := instead of = because I want CFLAGS to expand
 	# immediately (before including $(VISHEADER))
-	HEADERS_TO_INSTALL:=$(shell PATH=$(PATH) $(CPP) $(CFLAGS) $(CXXFLAGS) -MM $(INSTALL_HEADER) | sed 's,\($*\)\.o[ :]*,\1.h: ,g' | sed 's,\\,,g')
+	HEADERS_TO_INSTALL:=$(shell PATH="$(PATH)" $(CPP) $(CFLAGS) $(CXXFLAGS) -MM $(INSTALL_HEADER) | sed 's,\($*\)\.o[ :]*,\1.h: ,g' | sed 's,\\,,g')
 	HEADERS_INSTALL_DIR=$(BUILDFS)/$(INSTALL_PREFIX)/include
 endif
 
@@ -460,7 +460,8 @@ post-install-script:
 ifneq ($(POST_INSTALL_SCRIPT),)
 	@test ! -x $(POST_INSTALL_SCRIPT) || $(RUN_POST_INSTALL_SCRIPT) $@
 	@for t in $(_SUBTARGETS_DIRS) ; do			\
-		INSTALL_ROOT=$(INSTALL_ROOT) BUILDFS=$(BUILDFS)	\
+		INSTALL_ROOT="$(INSTALL_ROOT)"			\
+		BUILDFS="$(BUILDFS)"				\
 			make -C $$t $@ || break ;		\
 	done
 endif
@@ -470,11 +471,12 @@ install: $(INSTALLTARGETS) install-bin-pkg install-dev-pkg post-install-script
 install-bin install-bin-pkg: $(INSTALLTARGETS)
 ifneq ($(TARGETTYPE),staticlib)
 	@echo "Installing binaries to your root filesystem:"
-	@echo " * $(TARGET) -> $(INSTALL_TARGET)"
-	@$(INSTALL) $(TARGET) $(INSTALL_TARGET)
+	@echo " * $(TARGET) -> \"$(INSTALL_TARGET)\""
+	@$(INSTALL) $(TARGET) "$(INSTALL_TARGET)"
 endif
 	@for t in $(_SUBTARGETS_DIRS) ; do			\
-		INSTALL_ROOT=$(INSTALL_ROOT) BUILDFS=$(BUILDFS)	\
+		INSTALL_ROOT="$(INSTALL_ROOT)"			\
+		BUILDFS="$(BUILDFS)"				\
 			make -C $$t $@ || break ;		\
 	done
 
@@ -482,16 +484,17 @@ install-dev install-dev-pkg: $(TARGET_HEADERS) $(INSTALLTARGETS)
 ifneq ($(findstring lib,$(TARGETTYPE)),)
 ifneq ($(INSTALL_ROOT),$(BUILDFS))
 	@echo "Installing binaries to your build filesystem:"
-	@echo " * $(TARGET) -> $(BUILDFS_TARGET)"
-	@$(INSTALL) $(TARGET) $(BUILDFS_TARGET)
+	@echo " * $(TARGET) -> \"$(BUILDFS_TARGET)\""
+	@$(INSTALL) $(TARGET) "$(BUILDFS_TARGET)"
 endif
 ifeq ($(TARGETTYPE),lib)
-	@echo " * $(TARGET:.so=.a) -> $(BUILDFS_TARGET:.so=.a)"
-	@$(INSTALL) $(TARGET:.so=.a) $(BUILDFS_TARGET:.so=.a)
+	@echo " * $(TARGET:.so=.a) -> \"$(BUILDFS_TARGET:.so=.a)\""
+	@$(INSTALL) $(TARGET:.so=.a) "$(BUILDFS_TARGET:.so=.a)"
 endif
 endif
 	@for t in $(_SUBTARGETS_DIRS) ; do			\
-		INSTALL_ROOT=$(INSTALL_ROOT) BUILDFS=$(BUILDFS)	\
+		INSTALL_ROOT="$(INSTALL_ROOT)"			\
+		BUILDFS="$(BUILDFS)"				\
 			make -C $$t $@ || break ;		\
 	done
 
@@ -500,8 +503,8 @@ $(HEADERS_INSTALL_DIR)/$(HEADERS_TO_INSTALL) $(INSTALL_HEADER)
 	@echo "Installing headers to your build filesystem:"
 	@for h in $^ ; do						\
 		test "$$h" = "$(HEADERS_INSTALL_DIR)/$$h" && continue;	\
-		echo " * $$h -> $(HEADERS_INSTALL_DIR)/$$h";		\
-		$(INSTALL) $$h $(HEADERS_INSTALL_DIR)/$$h;		\
+		echo " * $$h -> \"$(HEADERS_INSTALL_DIR)/$$h\"";	\
+		$(INSTALL) $$h "$(HEADERS_INSTALL_DIR)/$$h";		\
 	done
 endif
 
@@ -517,34 +520,35 @@ endif
 	@cat $@
 
 $(TMPDIR):
-	@$(SUDORM) -rf $(TMPDIR)
-	@mkdir -p $@
+	@$(SUDORM) -rf "$(TMPDIR)"
+	@mkdir -p "$@"
 
 pkg: clean-files $(TMPDIR) all
-	@INSTALL_ROOT=$(TMPDIR) BUILDFS=$(TMPDIR) make	\
+	@INSTALL_ROOT="$(TMPDIR)" BUILDFS="$(TMPDIR)" make	\
 			install-bin-pkg install-dev-pkg post-install-script
 	make $(PKG)
 
 bin-pkg: clean-files $(TMPDIR) all
-	@INSTALL_ROOT=$(TMPDIR) make install-bin-pkg post-install-script
+	@INSTALL_ROOT="$(TMPDIR)" make install-bin-pkg post-install-script
 	make $(BINPKG)
 
 dev-pkg: clean-files $(TMPDIR) all
-	@BUILDFS=$(TMPDIR) make install-dev-pkg post-install-script
+	@BUILDFS="$(TMPDIR)" make install-dev-pkg post-install-script
 	make $(DEVPKG)
 
 src-pkg: $(TMPDIR)
-	@mkdir -p $(TMPDIR)/$(SRCPKGDIR)
-	@cp -rHv * $(TMPDIR)/$(SRCPKGDIR)
-	@make -C $(TMPDIR)/$(SRCPKGDIR) clean
-	@make -C $(TMPDIR)/$(SRCPKGDIR) $(VERSIONFILE)
-	@make -C $(TMPDIR)/$(SRCPKGDIR) clean-files clean-pkg
+	@mkdir -p "$(TMPDIR)/$(SRCPKGDIR)"
+	@cp -rHv * "$(TMPDIR)/$(SRCPKGDIR)"
+	@make -C "$(TMPDIR)/$(SRCPKGDIR)" clean
+	@make -C "$(TMPDIR)/$(SRCPKGDIR)" $(VERSIONFILE)
+	@make -C "$(TMPDIR)/$(SRCPKGDIR)" clean-files clean-pkg
 	@make $(SRCPKG)
 
 $(PKG) $(BINPKG) $(DEVPKG) $(SRCPKG): FORCE
-	@if rmdir $(TMPDIR) 2>&1 >/dev/null ;then echo "Nothing to pack" && exit 1; fi
-	cd $(TMPDIR) && tar czvf $@ --exclude=.gitignore *
-	@$(SUDORM) -rf $(TMPDIR)
+	@if rmdir "$(TMPDIR)" 2>&1 >/dev/null ;then echo "Nothing to pack" && \
+								exit 1; fi
+	cd "$(TMPDIR)" && tar czvf $@ --exclude=.gitignore *
+	@$(SUDORM) -rf "$(TMPDIR)"
 	@echo ""
 	@echo "Package $@ built"
 	@echo ""
@@ -569,10 +573,10 @@ clean-files: clean-subtargets
 	done
 	@rm -vf $(TARGET) $(BUILD_OUTPUT)tags $(VISHEADER)
 ifeq ($(TARGETTYPE),lib)
-	@rm -vf $(TARGET:.so=.a)
+	@rm -vf "$(TARGET:.so=.a)"
 endif
-	@if [ -d $(TMPDIR) ]; then		\
-		$(SUDORM) -rf $(TMPDIR) ;	\
+	@if [ -d "$(TMPDIR)" ]; then		\
+		$(SUDORM) -rf "$(TMPDIR)" ;	\
 	fi
 
 clean-pkg:
@@ -583,4 +587,4 @@ ifneq ($(BUILD_OUTPUT),)
 	@for i in $$(find $(BUILD_OUTPUT) -mindepth 1 -type d | sort -r); do \
 		rmdir -v $${i} ; done
 endif
-	@rm -f $(ENV_SCRIPT_OUTPUT)
+	@rm -f "$(ENV_SCRIPT_OUTPUT)"
