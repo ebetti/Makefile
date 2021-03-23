@@ -2,7 +2,7 @@
 # e-mail: betti@linux.com
 # License: GNU GPLv2
 #
-# Version 0.14 (Aug 8th, 2019)
+# Version 0.15 (Mar 23rd, 2021)
 #
 # "One to build them all!"
 #
