@@ -2,7 +2,7 @@
 # e-mail: betti@linux.com
 # License: GNU GPLv2
 #
-# Version 0.15 (Mar 23rd, 2021)
+# Version 0.16 (April 5th, 2021)
 #
 # "One to build them all!"
 #
@@ -396,7 +396,11 @@ ifneq ($(INSTALL_HEADER),)
 endif
 
 
-all: $(ALLTARGETS) $(CTAGSTARGET)
+all: target subtargets $(CTAGSTARGET)
+
+target: $(ALLTARGETS)
+
+subtargets: target
 	+@for t in $(_SUBTARGETS_DIRS) ; do	\
 		USEASAN=$(USEASAN) make -C $$t || break;	\
 	done
@@ -557,7 +561,7 @@ FORCE:
 
 .PHONY: all FORCE clean clean-files clean-pkg clean-subtargets		\
 	install install-bin install-bin-pkg install-dev install-dev-pkg	\
-	post-install-script bin-pkg dev-pkg pkg
+	post-install-script bin-pkg dev-pkg pkg target subtargets
 
 clean-subtargets:
 	@for t in $(_SUBTARGETS_DIRS) ; do	\
