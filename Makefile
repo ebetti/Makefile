@@ -2,7 +2,7 @@
 # e-mail: betti@linux.com
 # License: GNU GPLv2
 #
-# Version 0.16 (April 5th, 2021)
+# Version 0.17 (July 29th, 2021)
 #
 # "One to build them all!"
 #
@@ -433,17 +433,17 @@ $(BUILD_OUTPUT)%.d: %.c $(VISHEADER)
 
 $(BUILD_OUTPUT)%.dd1: %.cpp $(VISHEADER)
 	@$(CXX) $(CXXFLAGS) -MM -MT $@ $< > $@.$$$$;		\
-	sed 's,\($*\)\.d[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
+	sed 's,\($*\)\.dd1[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
 	rm -f $@.$$$$
 
 $(BUILD_OUTPUT)%.dd2: %.cc $(VISHEADER)
 	@$(CXX) $(CXXFLAGS) -MM -MT $@ $< > $@.$$$$;		\
-	sed 's,\($*\)\.d[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
+	sed 's,\($*\)\.ddd2[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
 	rm -f $@.$$$$
 
 $(BUILD_OUTPUT)%.dd3: %.C $(VISHEADER)
 	@$(CXX) $(CXXFLAGS) -MM -MT $@ $< > $@.$$$$;		\
-	sed 's,\($*\)\.d[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
+	sed 's,\($*\)\.dd3[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@;	\
 	rm -f $@.$$$$
 
 ifeq ($(OPTIMIZE_LIB_VISIBILITY),y)
